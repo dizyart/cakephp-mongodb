@@ -600,6 +600,7 @@ class MongodbSource extends DboSource {
 			return false;
 		}
         if (is_object($params) && is_array($Model)) {
+            //Backwards compatibility
             list($params, $Model) = array($Model, $params);
         }
 
