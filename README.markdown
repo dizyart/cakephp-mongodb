@@ -3,6 +3,7 @@
 ## Requirements
 PHP5, 
 pecl mongo (http://php.net/mongo)
+CakePHP 2.x
 
 ## Installation
 

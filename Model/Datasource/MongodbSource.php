@@ -182,7 +182,7 @@ class MongodbSource extends DboSource {
 			if (isset($this->config['replicaset']) && count($this->config['replicaset']) === 2) {
 				$this->connection = new Mongo($this->config['replicaset']['host'], $this->config['replicaset']['options']);
             } else if ($this->_driverVersion >= '1.3.0') {
-                $this->connection = new MongoClient($host); // presist option was removed, throws a notice in tests on 5.4
+                $this->connection = new MongoClient($host); // presist option was removed, issues a notice in tests on 5.4
 			} else if ($this->_driverVersion >= '1.2.0') {
                 $this->connection = new Mongo($host, array("persist" => $this->config['persistent']));
 			} else {
@@ -594,11 +594,14 @@ class MongodbSource extends DboSource {
  * @return void
  * @access public
  */
-	public function group($Model=null, $params = array()) {
+	public function group($params = array(), $Model=null) {
 
 		if (!$this->isConnected() || count($params) === 0 ) {
 			return false;
 		}
+        if (is_object($params) && is_array($Model)) {
+            list($params, $Model) = array($Model, $params);
+        }
 
 		$this->_prepareLogQuery($Model); // just sets a timer
 
