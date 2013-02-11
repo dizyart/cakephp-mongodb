@@ -23,8 +23,6 @@ App::uses('Model', 'Model');
 App::uses('AppModel', 'Model');
 
 
-
-
 /**
  * SqlCompatiblePost class
  *
@@ -86,6 +84,22 @@ class SqlCompatibleTest extends CakeTestCase {
 		'persistent' => false,
 	);
 
+	public function setUp() {
+		$connections = ConnectionManager::enumConnectionObjects();
+
+		if (!empty($connections['test']['classname']) && $connections['test']['classname'] === 'mongodbSource') {
+			$config = new DATABASE_CONFIG();
+			$this->_config = $config->test;
+		}
+
+		if(!isset($connections['test_mongo'])) {
+			ConnectionManager::create('test_mongo', $this->_config);
+			$this->Mongo = new MongodbSource($this->_config);
+		}
+
+		$this->Post = ClassRegistry::init(array('class' => 'SqlCompatiblePost', 'alias' => 'Post', 'ds' => 'test_mongo'), true);
+	}
+
 /**
  * Sets up the environment for each test method
  *
@@ -93,18 +107,6 @@ class SqlCompatibleTest extends CakeTestCase {
  * @access public
  */
 	public function startTest($method) {
-		$connections = ConnectionManager::enumConnectionObjects();
-
-		if (!empty($connections['test']['classname']) && $connections['test']['classname'] === 'mongodbSource') {		
-			$config = new DATABASE_CONFIG();
-			$this->_config = $config->test;
-		}
-
-		ConnectionManager::create('test_mongo', $this->_config);
-		$this->Mongo = new MongodbSource($this->_config);
-        
-		$this->Post = ClassRegistry::init(array('class' => 'SqlCompatiblePost', 'alias' => 'Post', 'ds' => 'test_mongo'));
-
 		$this->_setupData();
 	}
 
@@ -115,8 +117,12 @@ class SqlCompatibleTest extends CakeTestCase {
  * @access public
  */
 	public function endTest($method) {
-        $this->Post->deleteAll(true);
+		$this->Post->deleteAll(true);
+	}
+
+	public function tearDown() {
 		unset($this->Post);
+		ClassRegistry::flush();
 	}
 
 /**
@@ -365,7 +371,9 @@ class SqlCompatibleTest extends CakeTestCase {
  * @access protected
  */
 	protected function _setupData() {
-		$this->Post->deleteAll(true);
+		$this->Post->deleteAll(true, false);
+		$this->Post->primaryKey = '_id';
+
 		for ($i = 1; $i <= 20; $i++) {
 			$data = array(
 				'title' => $i,
