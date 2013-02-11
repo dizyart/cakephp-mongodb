@@ -135,7 +135,7 @@ class SqlCompatibleTest extends CakeTestCase {
 			'order' => array('number' => 'ASC')
 		));
 
-		$result = Hash::extract($result, '{n}.Post.title');
+		$result = $this->_extract($result, '{n}.Post.title');
 		$this->assertEqual($expected, $result);
 
 		$conditions = array(
@@ -152,7 +152,7 @@ class SqlCompatibleTest extends CakeTestCase {
 			'fields' => array('_id', 'title', 'number'),
 			'order' => array('number' => 'ASC')
 		));
-		$result = Hash::extract($result, '{n}.Post.title');
+		$result = $this->_extract($result, '{n}.Post.title');
 		$this->assertEqual($expected, $result);
 
 		$conditions = array(
@@ -177,7 +177,7 @@ class SqlCompatibleTest extends CakeTestCase {
 			'fields' => array('_id', 'title', 'number'),
 			'order' => array('number' => 'ASC')
 		));
-		$result = Hash::extract($result, '{n}.Post.title');
+		$result = $this->_extract($result, '{n}.Post.title');
 		$this->assertEqual($expected, $result);
 
 		$conditions = array(
@@ -204,7 +204,7 @@ class SqlCompatibleTest extends CakeTestCase {
 			'fields' => array('_id', 'title', 'number'),
 			'order' => array('number' => 'ASC')
 		));
-		$result = Hash::extract($result, '{n}.Post.title');
+		$result = $this->_extract($result, '{n}.Post.title');
 		$this->assertEqual($expected, $result);
 
 		$conditions = array(
@@ -231,7 +231,7 @@ class SqlCompatibleTest extends CakeTestCase {
 			'fields' => array('_id', 'title', 'number'),
 			'order' => array('number' => 'ASC')
 		));
-		$result = Hash::extract($result, '{n}.Post.title');
+		$result = $this->_extract($result, '{n}.Post.title');
 		$this->assertEqual($expected, $result);
 
 		$conditions = array(
@@ -266,7 +266,7 @@ class SqlCompatibleTest extends CakeTestCase {
 		$result = $this->Post->find('all', $params);
 
 		$expected = array('A11','A12');
-		$result = Hash::extract($result, '{n}.Post._id');
+		$result = $this->_extract($result, '{n}.Post._id');
 		$this->assertEqual($expected, $result);
 		$this->assertEqual(2, count($result));
 
@@ -281,7 +281,8 @@ class SqlCompatibleTest extends CakeTestCase {
 		$params = array('conditions' => array('_id' => array('$nin' => array('A11', 'A12'))));
 		$result = $this->Post->find('all', $params);
 		//$expected = array('A13','A14');
-		$result = Hash::extract($result, '{n}.Post._id');
+		$result = $this->_extract($result, '{n}.Post._id');
+        //debug($result); exit();
 		$this->assertTrue(in_array('A13', $result));
 		$this->assertFalse(in_array('A11', $result));
 		$this->assertFalse(in_array('A12', $result));
@@ -310,7 +311,7 @@ class SqlCompatibleTest extends CakeTestCase {
 			'fields' => array('_id', 'title'),
 			'order' => array('title DESC')
 		));
-		$result = Hash::extract($result, '{n}.Post.title');
+		$result = $this->_extract($result, '{n}.Post.title');
 		$this->assertEqual($expected, $result);
 
 		$order = array(array('title' => 'DESC'));
@@ -330,7 +331,7 @@ class SqlCompatibleTest extends CakeTestCase {
 			'fields' => array('_id', 'title'),
 			'order' => array('title ASC')
 		));
-		$result = Hash::extract($result, '{n}.Post.title');
+		$result = $this->_extract($result, '{n}.Post.title');
 		$this->assertEqual($expected, $result);
 
 		$order = array(array('title' => 'ASC'));
@@ -351,7 +352,7 @@ class SqlCompatibleTest extends CakeTestCase {
 			'fields' => array('_id', 'title'),
 			'order' => array('Post.title DESC')
 		));
-		$result = Hash::extract($result, '{n}.Post.title');
+		$result = $this->_extract($result, '{n}.Post.title');
 		$this->assertEqual($expected, $result);
 	}
 
@@ -374,4 +375,22 @@ class SqlCompatibleTest extends CakeTestCase {
 			$this->Post->save($saveData);
 		}
 	}
+    
+    
+    /**
+     * Backwards compatible function for Hash::extract
+     * 
+     * @param array $set
+     * @param string $path
+     * @param string $compatPath
+     * @return array Result of Hash::extract()
+     */
+    protected function _extract($set, $path, $compatPath = null){
+        if (class_exists('Hash')) {
+            return Hash::extract($set, $path);
+        }
+        else {
+            return Set::extract($set, ($compatPath === null) ? $path : $compatPath);
+        }
+    }
 }

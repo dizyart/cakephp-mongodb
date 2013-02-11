@@ -1265,28 +1265,28 @@ public function testMapReduce() {
 			'fields' => array('_id', 'title'),
 			'order' => array('title' => 1)
 		));
-		$result = Hash::extract($result, '{n}.Post.title');
+		$result = $this->_extract($result, '{n}.Post.title');
 
 		$this->assertEqual($expected, $result);
 		$result = $this->Post->find('all', array(
 			'fields' => array('_id', 'title'),
 			'order' => array('title' => 'ASC')
 		));
-		$result = Hash::extract($result, '{n}.Post.title');
+		$result = $this->_extract($result, '{n}.Post.title');
 
 		$expected = array_reverse($expected);
 		$result = $this->Post->find('all', array(
 			'fields' => array('_id', 'title'),
 			'order' => array('title' => '-1')
 		));
-		$result = Hash::extract($result, '{n}.Post.title');
+		$result = $this->_extract($result, '{n}.Post.title');
 		$this->assertEqual($expected, $result);
 
 		$result = $this->Post->find('all', array(
 			'fields' => array('_id', 'title'),
 			'order' => array('title' => 'DESC')
 		));
-		$result = Hash::extract($result, '{n}.Post.title');
+		$result = $this->_extract($result, '{n}.Post.title');
 		$this->assertEqual($expected, $result);
 	}
 
@@ -1683,4 +1683,21 @@ public function testMapReduce() {
 		$this->assertTrue(is_array($return));
 
 	}
+    
+    /**
+     * Backwards compatible function for Hash::extract
+     * 
+     * @param array $set
+     * @param string $path
+     * @param string $compatPath
+     * @return array Result of Hash::extract()
+     */
+    protected function _extract($set, $path, $compatPath = null){
+        if (class_exists('Hash')) {
+            return Hash::extract($set, $path);
+        }
+        else {
+            return Set::extract($set, ($compatPath === null) ? $path : $compatPath);
+        }
+    }
 }
