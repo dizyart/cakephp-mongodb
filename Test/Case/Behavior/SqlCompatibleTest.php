@@ -37,7 +37,7 @@ class SqlCompatiblePost extends AppModel {
 /**
  * useDbConfig property
  *
- * @var string 'mongo_test'
+ * @var string 'test_mongo'
  * @access public
  */
 	public $useDbConfig = 'test_mongo';
@@ -80,7 +80,7 @@ class SqlCompatibleTest extends CakeTestCase {
 		'host' => 'localhost',
 		'login' => '',
 		'password' => '',
-		'database' => 'mongo_test',
+		'database' => 'test_mongo',
 		'port' => 27017,
 		'prefix' => '',
 		'persistent' => false,
@@ -100,10 +100,10 @@ class SqlCompatibleTest extends CakeTestCase {
 			$this->_config = $config->test;
 		}
 
-		ConnectionManager::create('mongo_test', $this->_config);
+		ConnectionManager::create('test_mongo', $this->_config);
 		$this->Mongo = new MongodbSource($this->_config);
         
-		$this->Post = ClassRegistry::init(array('class' => 'SqlCompatiblePost', 'alias' => 'Post', 'ds' => 'mongo_test'));
+		$this->Post = ClassRegistry::init(array('class' => 'SqlCompatiblePost', 'alias' => 'Post', 'ds' => 'test_mongo'));
 
 		$this->_setupData();
 	}
