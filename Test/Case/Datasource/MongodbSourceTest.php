@@ -1532,7 +1532,12 @@ public function testMapReduce() {
 				'title'=>'Article 2'
 			)
 		));
-		$this->assertTrue(is_array($articles));
+        if (Configure::version() > '2.2.3'){
+            $this->assertEquals(array(), $articles);
+        }
+        else {
+            $this->assertFalse($articles);
+        }
 	}
 
 /**
