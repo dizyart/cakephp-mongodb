@@ -80,7 +80,7 @@ class SqlCompatibleTest extends CakeTestCase {
 		'host' => 'localhost',
 		'login' => '',
 		'password' => '',
-		'database' => 'test_mongo',
+		'database' => 'mongo_test',
 		'port' => 27017,
 		'prefix' => '',
 		'persistent' => false,
@@ -102,7 +102,7 @@ class SqlCompatibleTest extends CakeTestCase {
 
 		ConnectionManager::create('mongo_test', $this->_config);
 		$this->Mongo = new MongodbSource($this->_config);
-
+        
 		$this->Post = ClassRegistry::init(array('class' => 'SqlCompatiblePost', 'alias' => 'Post', 'ds' => 'mongo_test'));
 
 		$this->_setupData();
@@ -115,7 +115,7 @@ class SqlCompatibleTest extends CakeTestCase {
  * @access public
  */
 	public function endTest($method) {
-		$this->Post->deleteAll(true);
+        $this->Post->deleteAll(true);
 		unset($this->Post);
 	}
 

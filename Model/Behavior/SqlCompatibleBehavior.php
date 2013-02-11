@@ -78,7 +78,7 @@ class SqlCompatibleBehavior extends ModelBehavior {
  * @return void
  * @access public
  */
-	public function setup(&$Model, $config = array()) {
+	public function setup(Model $Model, $config = array()) {
 		$this->settings[$Model->alias] = array_merge($this->_defaultSettings, $config);
 	}
 
@@ -91,7 +91,7 @@ class SqlCompatibleBehavior extends ModelBehavior {
  * @return void
  * @access public
  */
-	public function afterFind(&$Model, $results, $primary) {
+	public function afterFind(Model $Model, $results, $primary) {
 		if ($this->settings[$Model->alias]['convertDates']) {
 			$this->convertDates($results);
 		}
@@ -108,7 +108,7 @@ class SqlCompatibleBehavior extends ModelBehavior {
  * @return void
  * @access public
  */
-	public function beforeFind(&$Model, $query) {
+	public function beforeFind(Model $Model, $query) {
 		if (is_array($query['order'])) {
 			$this->_translateOrders($Model, $query['order']);
 		}

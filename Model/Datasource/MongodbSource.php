@@ -595,7 +595,6 @@ class MongodbSource extends DboSource {
  * @access public
  */
 	public function group($Model=null, $params = array()) {
-        debug(get_class($Model));        xdebug_print_function_stack();die("GROUPIE");
 
 		if (!$this->isConnected() || count($params) === 0 ) {
 			return false;
@@ -1201,7 +1200,7 @@ class MongodbSource extends DboSource {
 		if (!$query || $query === true) {
 			return;
 		}
-		$this->_prepareLogQuery($Model); // just sets a timer
+		$this->_prepareLogQuery(); // just sets a timer
 		$return = $this->_db
 			->execute($query, $params);
 		if ($this->fullDebug) {
