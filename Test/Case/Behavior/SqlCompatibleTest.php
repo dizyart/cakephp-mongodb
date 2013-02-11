@@ -40,7 +40,7 @@ class SqlCompatiblePost extends AppModel {
  * @var string 'mongo_test'
  * @access public
  */
-	public $useDbConfig = 'mongo_test';
+	public $useDbConfig = 'test_mongo';
 
 /**
  * actsAs property
@@ -92,7 +92,7 @@ class SqlCompatibleTest extends CakeTestCase {
  * @return void
  * @access public
  */
-	public function startTest() {
+	public function startTest($method) {
 		$connections = ConnectionManager::enumConnectionObjects();
 
 		if (!empty($connections['test']['classname']) && $connections['test']['classname'] === 'mongodbSource') {		
@@ -114,7 +114,7 @@ class SqlCompatibleTest extends CakeTestCase {
  * @return void
  * @access public
  */
-	public function endTest() {
+	public function endTest($method) {
 		$this->Post->deleteAll(true);
 		unset($this->Post);
 	}

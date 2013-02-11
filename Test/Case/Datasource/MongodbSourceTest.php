@@ -32,7 +32,7 @@ App::uses('AppModel', 'Model');
  */
 class Post extends AppModel {
 
-	public $useDbConfig = 'mongo_test';
+	public $useDbConfig = 'test_mongo';
 
 /**
  * mongoSchema property
@@ -86,7 +86,7 @@ class Post extends AppModel {
  */
 class MongoArticle extends AppModel {
 
-	public $useDbConfig = 'mongo_test';
+	public $useDbConfig = 'test_mongo';
 }
 
 /**
@@ -120,7 +120,7 @@ class MongodbSourceTest extends CakeTestCase {
 		'database' => 'test_mongo',
 		'port' => 27017,
 		'prefix' => '',
-		'persistent' => true,
+		//'persistent' => true,
 	);
 
 /**
@@ -130,6 +130,7 @@ class MongodbSourceTest extends CakeTestCase {
  * @access public
  */
 	public function setUp() {
+        
 		$connections = ConnectionManager::enumConnectionObjects();
 
 		if (!empty($connections['test']['classname']) && $connections['test']['classname'] === 'mongodbSource') {
@@ -137,13 +138,13 @@ class MongodbSourceTest extends CakeTestCase {
 			$this->_config = $config->test;
 		}
 
-		ConnectionManager::create('mongo_test', $this->_config);
+		ConnectionManager::create('test_mongo', $this->_config);
 		$this->Mongo = new MongodbSource($this->_config);
 
 		$this->Post = ClassRegistry::init('Post');
-		$this->Post->setDataSource('mongo_test');
+		$this->Post->setDataSource('test_mongo');
 
-		$this->mongodb =& ConnectionManager::getDataSource($this->Post->useDbConfig);
+		$this->mongodb = ConnectionManager::getDataSource($this->Post->useDbConfig);
 		$this->mongodb->connect();
 
 		$this->dropData();
@@ -188,7 +189,7 @@ class MongodbSourceTest extends CakeTestCase {
 				->connection
 				->selectDB($this->_config['database'])
 				->selectCollection($this->Post->table)
-				->insert($data, true);
+				->insert($data);
 		} catch (MongoException $e) {
 			trigger_error($e->getMessage());
 		}
@@ -230,7 +231,7 @@ class MongodbSourceTest extends CakeTestCase {
 			 'database' => 'test_mongo',
 			 'port' => 27017,
 			 'prefix' => '',
-			 'persistent' => false,
+			 //'persistent' => false,
 			 );
 		$version = '1.2.2';
 		$expect = 'mongodb://localhost:27017';
@@ -246,7 +247,7 @@ class MongodbSourceTest extends CakeTestCase {
 			 'database' => 'test_mongo',
 			 'port' => 27017,
 			 'prefix' => '',
-			 'persistent' => false,
+			 //'persistent' => false,
 			 );
 		$version = '1.2.2';
 		$expect = 'mongodb://user:pass@localhost:27017/test_mongo';
@@ -262,7 +263,7 @@ class MongodbSourceTest extends CakeTestCase {
 			 'database' => 'test_mongo',
 			 'port' => 27017,
 			 'prefix' => '',
-			 'persistent' => false,
+			 //'persistent' => false,
 			 );
 		$version = '1.0.0';
 		$expect = 'user:pass@localhost:27017/test_mongo';
@@ -680,7 +681,8 @@ class MongodbSourceTest extends CakeTestCase {
 		$conditions = array('title' => 'test');
 
 		$resultUpdateAll = $this->Post->updateAll($updateData, $conditions);
-		$this->assertTrue($resultUpdateAll);
+		$this->assertNotEmpty($resultUpdateAll);
+        $this->assertTrue((bool) $resultUpdateAll);
 
 		$result = $this->Post->find('all');
 		$this->assertEqual(2, count($result));
@@ -1514,6 +1516,7 @@ public function testMapReduce() {
  * @access public
  */
 	public function testEmptyReturn() {
+        /* @var MongoArticle $MongoArticle */
 		$MongoArticle = ClassRegistry::init('MongoArticle');
 		$MongoArticle->create(array('title' => 'Article 1', 'cat' => 1));
 		$MongoArticle->save();
@@ -1522,13 +1525,14 @@ public function testMapReduce() {
 				'title'=>'Article 2'
 			)
 		));
+        
 		$this->assertTrue(is_array($articles));
 		$articles=$MongoArticle->find('first',array(
 			'conditions'=>array(
 				'title'=>'Article 2'
 			)
 		));
-		$this->assertFalse(is_array($articles));
+		$this->assertTrue(is_array($articles));
 	}
 
 /**
@@ -1655,7 +1659,7 @@ public function testMapReduce() {
 				'title' => 'Doesn\'t exist'
 			)
 		));
-		$this->assertFalse($return);
+		$this->assertEmpty($return);
 
 		$return = $MongoArticle->find('count', array(
 			'conditions' => array(

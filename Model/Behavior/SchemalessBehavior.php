@@ -68,9 +68,9 @@ class SchemalessBehavior extends ModelBehavior {
  * @return void
  * @access public
  */
-	public function setup(&$Model, $config = array()) {
-		//$this->settings[$Model->alias] = array_merge($this->_defaultSettings, $config);
-	}
+	public function setup(Model $model, $config = array()) {
+        parent::setup($model, $config);
+    }
 
 /**
  * beforeSave method
@@ -81,7 +81,7 @@ class SchemalessBehavior extends ModelBehavior {
  * @return void
  * @access public
  */
-	public function beforeSave(&$Model) {
+	public function beforeSave(Model $Model) {
 		$Model->cacheSources = false;
 		$Model->schema(true);
 		return true;

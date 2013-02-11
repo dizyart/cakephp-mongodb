@@ -178,11 +178,13 @@ class MongodbSource extends DboSource {
 		try{
 
 			$host = $this->createConnectionName($this->config, $this->_driverVersion);
-
+            
 			if (isset($this->config['replicaset']) && count($this->config['replicaset']) === 2) {
 				$this->connection = new Mongo($this->config['replicaset']['host'], $this->config['replicaset']['options']);
+            } else if ($this->_driverVersion >= '1.3.0') {
+                $this->connection = new MongoClient($host); // presist option was removed, throws a notice in tests on 5.4
 			} else if ($this->_driverVersion >= '1.2.0') {
-				$this->connection = new Mongo($host, array("persist" => $this->config['persistent']));
+                $this->connection = new Mongo($host, array("persist" => $this->config['persistent']));
 			} else {
 				$this->connection = new Mongo($host, true, $this->config['persistent']);
 			}
@@ -303,7 +305,7 @@ class MongodbSource extends DboSource {
  * @return mixed MongoDB Collection Object
  * @access public
  */
-	public function getMongoCollection(&$Model) {
+	public function getMongoCollection(Model $Model) {
 		if ($this->connected === false) {
 			return false;
 		}
@@ -382,7 +384,7 @@ class MongodbSource extends DboSource {
  * @return array if model instance has mongoSchema, return it.
  * @access public
  */
-	public function describe(&$Model, $field = null) {
+	public function describe($Model) {
 		$Model->primaryKey = '_id';
 		$schema = array();
 		if (!empty($Model->mongoSchema) && is_array($Model->mongoSchema)) {
@@ -418,7 +420,7 @@ class MongodbSource extends DboSource {
  * @return array
  * @access public
  */
-	public function calculate(&$Model) {
+	public function calculate(Model $Model, $func, $params=array()) {
 		return array('count' => true);
 	}
 
@@ -443,7 +445,7 @@ class MongodbSource extends DboSource {
  * @return boolean Insert result
  * @access public
  */
-	public function create(&$Model, $fields = null, $values = null) {
+	public function create(Model $Model, $fields = null, $values = null) {
 		if (!$this->isConnected()) {
 			return false;
 		}
@@ -461,7 +463,7 @@ class MongodbSource extends DboSource {
 		try{
 			$return = $this->_db
 				->selectCollection($Model->table)
-				->insert($data, true);
+				->insert($data, array());
 		} catch (MongoException $e) {
 			$this->error = $e->getMessage();
 			trigger_error($this->error);
@@ -507,7 +509,7 @@ class MongodbSource extends DboSource {
  * @return void
  * @access public
  */
-	public function dropSchema($schema, $tableName = null) {
+	public function dropSchema(CakeSchema $schema, $tableName = null) {
 		if (!$this->isConnected()) {
 			return false;
 		}
@@ -546,7 +548,7 @@ class MongodbSource extends DboSource {
  * @return void
  * @access public
  */
-	public function distinct(&$Model, $keys = array(), $params = array()) {
+	public function distinct(Model $Model, $keys = array(), $params = array()) {
 		if (!$this->isConnected()) {
 			return false;
 		}
@@ -592,7 +594,8 @@ class MongodbSource extends DboSource {
  * @return void
  * @access public
  */
-	public function group(&$Model, $params = array()) {
+	public function group($Model=null, $params = array()) {
+        debug(get_class($Model));        xdebug_print_function_stack();die("GROUPIE");
 
 		if (!$this->isConnected() || count($params) === 0 ) {
 			return false;
@@ -631,7 +634,7 @@ class MongodbSource extends DboSource {
  * @return void
  * @access public
  */
-	public function ensureIndex(&$Model, $keys = array(), $params = array()) {
+	public function ensureIndex(Model $Model, $keys = array(), $params = array()) {
 		if (!$this->isConnected()) {
 			return false;
 		}
@@ -673,7 +676,7 @@ class MongodbSource extends DboSource {
  * @return boolean Update result
  * @access public
  */
-	public function update(&$Model, $fields = null, $values = null, $conditions = null) {
+	public function update(Model $Model, $fields = null, $values = null, $conditions = null) {
 
 		if (!$this->isConnected()) {
 			return false;
@@ -746,7 +749,7 @@ class MongodbSource extends DboSource {
  * @return array $data
  * @access public
  */
-	public function setMongoUpdateOperator(&$Model, $data) {
+	public function setMongoUpdateOperator(Model $Model, $data) {
 		if(isset($data['updated'])) {
 			$updateField = 'updated';
 		} else {
@@ -787,7 +790,7 @@ class MongodbSource extends DboSource {
  * @return boolean Update result
  * @access public
  */
-	public function updateAll(&$Model, $fields = null,  $conditions = null) {
+	public function updateAll(Model $Model, $fields = null,  $conditions = null) {
 		if (!$this->isConnected()) {
 			return false;
 		}
@@ -870,7 +873,7 @@ class MongodbSource extends DboSource {
  * @return boolean Update result
  * @access public
  */
-	public function delete(&$Model, $conditions = null) {
+	public function delete(Model $Model, $conditions = null) {
 		if (!$this->isConnected()) {
 			return false;
 		}
@@ -930,7 +933,7 @@ class MongodbSource extends DboSource {
  * @return array Results
  * @access public
  */
-	public function read(&$Model, $query = array()) {
+	public function read(Model $Model, $query = array(), $recursive = null) {
 		if (!$this->isConnected()) {
 			return false;
 		}
@@ -1095,10 +1098,21 @@ class MongodbSource extends DboSource {
  * @return void
  * @access public
  */
-	public function query($query, $params = array()) {
+	public function query() {
 		if (!$this->isConnected()) {
 			return false;
 		}
+        $args = func_get_args();
+        
+        if (count($args) > 0) {
+            $query = $args[0];
+            // $params = $args[1];
+            // $Model = $args[2];
+            $Model = null;
+        }
+        else {
+            return false;
+        }
 
 		if($query === 'getMongoDb') {
 			return $this->getMongoDb();
@@ -1179,7 +1193,7 @@ class MongodbSource extends DboSource {
  * @return void
  * @access public
  */
-	public function execute($query, $params = array()) {
+	public function execute($query, $params = array(), $unused=array()) {
 		if (!$this->isConnected()) {
 			return false;
 		}
@@ -1237,7 +1251,7 @@ class MongodbSource extends DboSource {
  * @return void
  * @access protected
  */
-	protected function _prepareLogQuery(&$Model) {
+	protected function _prepareLogQuery() {
 		if (!$this->fullDebug) {
 			return false;
 		}
