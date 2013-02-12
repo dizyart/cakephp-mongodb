@@ -277,9 +277,16 @@ class MongodbSource extends DboSource {
 		}
 		$this->_prepareLogQuery($table); // just sets a timer
 		try{
-			$return = $this->_db
+            if ($this->_driverVersion >= '1.3.0') {
+				$return = $this->_db
 				->selectCollection($table)
 				->batchInsert($data, array('safe' => true));
+			} else {
+				$return = $this->_db
+				->selectCollection($table)
+				->batchInsert($data, true);
+			}
+			
 		} catch (MongoException $e) {
 			$this->error = $e->getMessage();
 			trigger_error($this->error);

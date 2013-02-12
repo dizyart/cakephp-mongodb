@@ -27,7 +27,13 @@ class SubCollectionValidatorBehavior extends ModelBehavior {
 
     public function setup(Model $model, $config = array()) {
         if(!isset($this->_methods[$model->name])) {
-            $this->_methods[$model->name] = $model->validator()->getMethods();
+            if (method_exists($model, 'validator')) {
+                $this->_methods[$model->name] = $model->validator()->getMethods();
+            }
+            else {
+                throw new MissingBehaviorException('SubCollectionValidator behvior not supported for CakePHP v'.Configure::version().'.');
+            }
+            
         }
     }
 

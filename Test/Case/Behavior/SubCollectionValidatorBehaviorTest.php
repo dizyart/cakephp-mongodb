@@ -100,6 +100,24 @@ class MyCompany extends AppModel {
  * @subpackage    Mongodb.Test.Case.Behavior
  */
 class SubCollectionValidatorBehaviorTest extends CakeTestCase {
+    
+    /**
+ * Base Config
+ *
+ * @var array
+ * @access public
+ *
+ */
+	protected $_config = array(
+		'datasource' => 'Mongodb.MongodbSource',
+		'host' => 'localhost',
+		'login' => '',
+		'password' => '',
+		'database' => 'test_mongo',
+		'port' => 27017,
+		'prefix' => '',
+		//'persistent' => true,
+	);
 
 /**
  * Sets up the environment for each test method
@@ -107,9 +125,29 @@ class SubCollectionValidatorBehaviorTest extends CakeTestCase {
  * @return void
  * @access public
  */
-    public function setUp() {
-        $this->Company = ClassRegistry::init(array('class' => 'MyCompany', 'ds' => 'test_mongo'), true);
-    }
+	public function setUp() {
+        
+		$connections = ConnectionManager::enumConnectionObjects();
+
+		if (!empty($connections['test']['classname']) && $connections['test']['classname'] === 'mongodbSource') {
+			$config = new DATABASE_CONFIG();
+			$this->_config = $config->test;
+		} elseif (isset($connections['test_mongo'])) {
+			$this->_config = $connections['test_mongo'];
+		}
+
+		if(!isset($connections['test_mongo'])) {
+			ConnectionManager::create('test_mongo', $this->_config);
+		}
+
+		$this->Mongo = new MongodbSource($this->_config);
+
+		$this->Company = ClassRegistry::init(array('class' => 'MyCompany', 'ds' => 'test_mongo'), true);
+		
+		$this->mongodb = ConnectionManager::getDataSource($this->Company->useDbConfig);
+		$this->mongodb->connect();
+	}
+
 
     public function startTest($method) {
         //clear Company attributes
