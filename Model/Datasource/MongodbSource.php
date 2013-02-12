@@ -115,10 +115,10 @@ class MongodbSource extends DboSource {
 		'text' => array('name' => 'text'),
 		'integer' => array('name' => 'integer', 'format' => null, 'formatter' => 'intval'),
 		'float' => array('name' => 'float', 'format' => null, 'formatter' => 'floatval'),
-		'datetime' => array('name' => 'datetime', 'format' => null, 'formatter' => 'MongodbDateFormatter'),
-		'timestamp' => array('name' => 'timestamp', 'format' => null, 'formatter' => 'MongodbDateFormatter'),
-		'time' => array('name' => 'time', 'format' => null, 'formatter' => 'MongodbDateFormatter'),
-		'date' => array('name' => 'date', 'format' => null, 'formatter' => 'MongodbDateFormatter'),
+		'datetime' => array('name' => 'datetime', 'format' => null, 'formatter' => array('MongodbSource','dateFormatter')),
+		'timestamp' => array('name' => 'timestamp', 'format' => null, 'formatter' => array('MongodbSource','dateFormatter')),
+		'time' => array('name' => 'time', 'format' => null, 'formatter' => array('MongodbSource','dateFormatter')),
+		'date' => array('name' => 'date', 'format' => null, 'formatter' => array('MongodbSource','dateFormatter'))
 	);
 
 /**
@@ -1531,20 +1531,62 @@ class MongodbSource extends DboSource {
 			}
 		}
 	}
-}
-
-/**
- * MongoDbDateFormatter method
+    
+    /**
+ * Queries associations. Used to fetch results on recursive models.
  *
- * This function cannot be in the class because of the way model save is written
- *
- * @param mixed $date null
- * @return void
- * @access public
+ * @param Model $model Primary Model object
+ * @param Model $linkModel Linked model that
+ * @param string $type Association type, one of the model association types ie. hasMany
+ * @param string $association
+ * @param array $assocData
+ * @param array $queryData
+ * @param boolean $external Whether or not the association query is on an external datasource.
+ * @param array $resultSet Existing results
+ * @param integer $recursive Number of levels of association
+ * @param array $stack
+ * @return mixed
+ * @throws CakeException when results cannot be created.
  */
-function MongoDbDateFormatter($date = null) {
+	public function queryAssociation(Model $model, &$linkModel, $type, $association, $assocData, &$queryData, $external, &$resultSet, $recursive, $stack) {
+        foreach($resultSet as $cursor => $record) {
+            $resultSet[$cursor][$linkModel->alias] = ['test' => $record[$model->alias][$model->primaryKey]];
+        }
+        return parent::queryAssociation($model, $linkModel, $type, $association, $assocData, $queryData, $external, $resultSet, $recursive, $stack);
+    }
+    
+    /**
+     * Date formatter for date/time column types
+     * 
+     * 
+     * @since 2.0RC1
+     * @param type $date
+     * @return MongoDate
+     */
+    public static function dateFormatter($date = null) {
 	if ($date) {
 		return new MongoDate($date);
 	}
 	return new MongoDate();
+}
+    
+}
+
+
+
+/**
+ * MongoDbDateFormatter function
+ *
+ * Alias for MongodbSource::dateFormatter()
+ *
+ * @param mixed $date null
+ * @return MongoDate
+ * @access public
+ * @deprecated since version 2.0RC1
+ */
+
+function MongoDbDateFormatter($date=null){
+    $error_type = (defined('E_USER_DEPRECATED')) ? E_USER_DEPRECATED : E_USER_NOTICE;
+    trigger_error("Deprecated, please use MongodbSource::dateFormatter() instead", $error_type);
+    return MongodbSource::dateFormatter($date);
 }
