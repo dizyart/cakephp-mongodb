@@ -191,7 +191,6 @@ class MongodbSourceTest extends CakeTestCase {
         $this->assertArraySubsetMatches($result, array('Vehicle' => $Vehicle, 'VehiclePart' => array($VehiclePart)));
     }
     
-    function test
     
     function testCheckInheritance(){
         $expected = array(
