@@ -344,11 +344,14 @@ class MongodbSource extends DboSource {
  * listSources is infact supported, however: cake expects it to return a complete list of all
  * possible sources in the selected db - the possible list of collections is infinte, so it's
  * faster and simpler to tell cake that the interface is /not/ supported so it assumes that
- * <insert name of your table here> exist
+ * <insert name of your table here> exists
+ * 
+ * This function was removed from DataSource in Cake 2.2.0
  *
  * @param mixed $interface
  * @return void
  * @access public
+ * 
  */
 	public function isInterfaceSupported($interface) {
 		if ($interface === 'listSources') {
@@ -1068,6 +1071,7 @@ class MongodbSource extends DboSource {
 				->limit($limit)
 				->skip($offset);
             
+            
 			if ($this->fullDebug) {
 				$count = $resultSet->count(true);
                 /** @todo change $Model->useTable to $Model->table? */
@@ -1091,10 +1095,10 @@ class MongodbSource extends DboSource {
 			if ($this->fullDebug) {
 				if ($resultSet['ok']) {
 					$count = 1;
-					if ($this->config['set_string_id'] && !empty($resultSet['value']['_id']) && is_object($resultSet['value']['_id'])) {
-						$resultSet['value']['_id'] = $resultSet['value']['_id']->__toString();
+					if ($this->config['set_string_id'] && !empty($resultSet['value']['_id']) && $resultSet['value']['_id'] instanceof MongoId) {
+						$resultSet['value']['_id'] = (string) $resultSet['value']['_id'];
 					}
-					$resultSet[][$model->alias] = $resultSet['value'];
+					$resultSet = array( array($model->alias => $resultSet['value']) );
 				} else {
 					$count = 0;
 				}
@@ -1103,25 +1107,25 @@ class MongodbSource extends DboSource {
 				);
 			}
 		}
-        /** redundant? since already checked above @see MongodbSource::_queryCount(); **/
-		//if ($model->findQueryType === 'count') {
-		//	return array(array($model->alias => array('count' => $resultSet->count())));
-		//}
 
 		if (is_object($resultSet)) {
-			$_return = array();
-			while ($resultSet->hasNext()) {
-				$mongodata = $resultSet->getNext();
-				if ($this->config['set_string_id'] && !empty($mongodata['_id']) && is_object($mongodata['_id'])) {
-					$mongodata['_id'] = $mongodata['_id']->__toString();
-				}
-                if ($model->primaryKey !== '_id') {
-					$mongodata[$model->primaryKey] = $mongodata['_id'];
-					unset($mongodata['_id']);
-				}
-				$_return[][$model->alias] = $mongodata;
+            
+            /** @var array Temporary result set */
+            $_resultSet = array();
+			foreach ($resultSet as $idstring => $resultRecord) {
+                if (!empty($resultRecord['_id'])){
+                    if ($this->config['set_string_id'] && $resultRecord['_id'] instanceof MongoId) {
+                        $resultRecord['_id'] = (string) $resultRecord['_id']; //typecast instead of __toString();
+                    }
+                    if ($model->primaryKey !== '_id') {
+                        $resultRecord[$model->primaryKey] = $resultRecord['_id'];
+                        unset($resultRecord['_id']);
+                    }
+                }
+				$_resultSet[][$model->alias] = $resultRecord;
 			}
-			$resultSet = $_return;
+            
+			$resultSet = $_resultSet;
 		}
 
 
@@ -1181,11 +1185,10 @@ class MongodbSource extends DboSource {
                     
                     if (isset($db) && method_exists($db, 'queryAssociation')) {
                         $stack = array($association);
-						$stack['_joined'] = $joined;
+						/** @todo $stack['_joined'] = $joined; **/
                         
                         $db->queryAssociation($model, $linkModel, $type, $association, $assocData, $queryData, $external, $resultSet, $model->recursive-1, $stack);
-                        //$db->queryAssociation($model, $linkModel, $type, $assoc, $assocData, $array, true, $resultSet, $model->recursive - 1, $stack);
-						unset($db);
+                        unset($db);
                     }
 				}
 			}
@@ -1193,6 +1196,7 @@ class MongodbSource extends DboSource {
 
 
 		if (!is_null($recursive)) {
+            /** @todo what is $_recursive? */
 			$model->recursive = $_recursive;
 		}
 
@@ -1618,6 +1622,16 @@ class MongodbSource extends DboSource {
  * @throws CakeException when results cannot be created.
  */
 	public function queryAssociation(Model $model, &$linkModel, $type, $association, $assocData, &$queryData, $external, &$resultSet, $recursive, $stack) {
+            $idList = array();
+            $keyName = $model->primaryKey;
+            if($type === 'belongsTo') {
+                $keyName = $assocData['foreignKey'];
+            }
+            foreach($resultSet as $modelData) {
+                if(!empty($modelData[$model->alias])) {
+                    $idList[] = $modelData[$model->alias][$keyName];
+                }
+            }
         switch($type):
             case 'hasMany':
                 $cond = array($assocData['foreignKey'] => array('$in' => $idList));
@@ -1629,7 +1643,7 @@ class MongodbSource extends DboSource {
                         'recursive' => $recursive - 1,
                         );
                 $hasManyResult = $linkModel->find('all', $params);
-
+                
 
                 if(!empty($hasManyResult)) {
                     //aggregate retrieving data using array key(foreigin key _id)
@@ -1637,19 +1651,11 @@ class MongodbSource extends DboSource {
                     foreach($hasManyResult as $key => $val) {
                         $foreignKey = $val[$linkModel->alias][$assocData['foreignKey']];
                         if(!empty($foreignKey)) {
-                            $hasManyResultSet[$foreignKey][] = $val[$linkModel->alias];
+                            $hasManyResultSet[$foreignKey] = $val[$linkModel->alias];
                         }
                     }
 
-                    //set relational retrieving data to return data
-                    foreach($resultSet as $key => $val) {
-                        if(!empty($hasManyResultSet[ $val[$model->alias][$model->primaryKey] ])) {
-                            $resultSet[$key][$model->alias][$linkModel->alias] = $hasManyResultSet[ $val[$model->alias][$model->primaryKey] ];
-                        } else {
-                            $resultSet[$key][$model->alias][$linkModel->alias] = array();
-                        }
-                    }
-
+                    $this->_mergeHasMany($resultSet, $hasManyResult, $association, $model, $linkModel);
                 }
                 break;
 

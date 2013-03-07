@@ -89,6 +89,7 @@ class MongoArticle extends AppModel {
 	public $useDbConfig = 'test_mongo';
 }
 
+
 /**
  * MongoDB Source test class
  *
