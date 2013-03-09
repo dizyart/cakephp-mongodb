@@ -21,6 +21,8 @@
 
 App::uses('Model', 'Model');
 App::uses('AppModel', 'Model');
+App::uses('MongodbSource', 'Mongodb.Model/Datasource');
+App::uses('MongodbAppModel', 'Mongodb.Model');
 
 
 /**
@@ -30,7 +32,7 @@ App::uses('AppModel', 'Model');
  * @package       mongodb
  * @subpackage    mongodb.tests.cases.behaviors
  */
-class SqlCompatiblePost extends AppModel {
+class SqlCompatiblePost extends MongodbAppModel {
 
 /**
  * useDbConfig property

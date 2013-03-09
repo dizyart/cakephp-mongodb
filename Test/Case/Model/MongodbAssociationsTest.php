@@ -36,7 +36,7 @@ class Vehicle extends MongodbAppModel {
     );
     
     public $hasAndBelongsToMany = array(
-        'CarOwner' => array(
+        'Owner' => array(
             'className' => "Owner",
 			'joinTable' => "owners_vehicles",
 			'with' => "OwnersVehicle",
@@ -98,6 +98,18 @@ class MongodbAssociationsTest extends CakeTestCase {
  * @access public
  */
 	public $mongodb;
+    
+    /**
+     *
+     * @var boolean If true, test method data persists until next test
+     */
+    public $keepDataForNext = false;
+    
+    /**
+     *
+     * @var boolean If true, no data is dropped after each test (but is erased on setup)
+     */
+    public $keepAllData = false;
 
 /**
  * Base Config
@@ -117,12 +129,20 @@ class MongodbAssociationsTest extends CakeTestCase {
 		//'persistent' => true,
 	);
     
+    public function __construct($name = NULL, array $data = array(), $dataName = '') {
+        parent::__construct($name, $data, $dataName);
+        if (!empty($_GET['debug'])) {
+            $this->keepAllData = true;  
+        }
+    }
+    
     
     
     
     ###### TEST CASES #####
     
     public function testSave(){
+        $this->dropData();
         $data = array(
             'name' => 'Beetle',
             'year' => 1950
@@ -186,7 +206,6 @@ class MongodbAssociationsTest extends CakeTestCase {
         $this->Vehicle->saveAssociated(compact('Vehicle', 'VehiclePart'));
         $this->Vehicle->recursive = 1;
         $result = $this->Vehicle->read(null, $this->Vehicle->getInsertId());
-        //debug($result); die();
         $this->assertArraySubsetMatches($result, compact('Vehicle', 'VehiclePart'));
     }
     function testSaveAssociatedBelongsTo(){
@@ -304,32 +323,106 @@ class MongodbAssociationsTest extends CakeTestCase {
     
     
     function testSaveHabtm(){
-        $vehicle_id = new MongoId('abcdef1234567890');
+        $this->keepDataForNext = true;
+        $vehicle_id = new MongoId();
         $vehicle_data = array('id' => $vehicle_id, 'name' => 'Corvette V12');
         $this->Vehicle->save($vehicle_data);
         $data = array(
             array(
             'Vehicle' => array('id' => (string)$vehicle_id),
-            'Owner' => array('name' => 'John Longbottom')
+            'Owner' => array('name' => 'John Longbottom', 'current' => true)
             ),
             array(
             'Vehicle' => array('id' => (string)$vehicle_id),
-            'Owner' => array('name' => 'Jim Lipton')
+            'Owner' => array('name' => 'Jim Lipton', 'since' => '1993', 'until' => '2000')
             ),
         );
         $this->Owner->saveAll($data);
         $this->Vehicle->recursive = 1;
-        $return = $this->Vehicle->read(null, $vehicle_id);
-        debug($return); die();
+        $result = $this->Vehicle->read(null, $vehicle_id);
+        
+        $expected = array(
+            'Vehicle' => array(
+                'name' => 'Corvette V12',
+                'id' => (string)$vehicle_id
+            ),
+            'Owner' => array(
+                array('name' => 'John Longbottom', 'current' => true),
+                array('name' => 'Jim Lipton', 'since' => '1993', 'until' => '2000')
+            )
+        );
+        $this->assertArraySubsetMatches($result, $expected);
+        
+        $result = $this->Owner->find('first', array('conditions' => array('current' => true)));
+        $expected = array(
+            'Owner' => array(
+                'name' => 'John Longbottom',
+                'current' => true
+            ),
+            'Vehicle' => array(
+                array(
+                    'name' => 'Corvette V12',
+                )
+            )
+        );
+        $this->assertArraySubsetMatches($result, $expected);
     }
     
     
-    function startTest($method) {
-        //$this->dropData();
+    
+    public function testReplaceHabtm(){
+        $data = $this->Vehicle->find('first', array('conditions'  => array('name' => 'Corvette V12')));
+        unset($data['Owner'][0]);
+        $ownerIds = array();
+        foreach($data['Owner'] as $owner) {
+            $ownerIds[] = $owner['id'];
+        }
+        
+        $data = array(
+            'id' => $data['Vehicle']['id'],
+            'Owner' => $ownerIds
+        );
+        $this->Vehicle->save($data);
+        $result = $this->Vehicle->read();
+        
+        $expected = array(
+            'Vehicle' => array(
+                'name' => 'Corvette V12'
+            ),
+            'Owner' => array(
+                array(
+                    'name' => 'Jim Lipton',
+                    'since' => '1993',
+                    'until' => '2000',
+                )
+            )
+        );
+        
+        $this->assertArraySubsetMatches($result, $expected);
+        $this->assertCount(count($ownerIds), $result['Owner']);
+        
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    function startTest($method){
+        
+    }
+    function endTest($method) {
+        if (!$this->keepDataForNext && !$this->keepAllData){
+            $this->dropData();
+        }
+        $this->keepDataForNext = false;
     }
 
 /**
- * Sets up the environment for each test method
+ * Sets up the environment for each TEST METHOD
  *
  * @return void
  * @access public
@@ -359,7 +452,7 @@ class MongodbAssociationsTest extends CakeTestCase {
 
 		$this->mongodb = ConnectionManager::getDataSource($this->Vehicle->useDbConfig);
 		$this->mongodb->connect();
-        $this->dropData();
+        
 	}
 
 /**
@@ -369,7 +462,9 @@ class MongodbAssociationsTest extends CakeTestCase {
  * @access public
  */
 	public function tearDown() {
-		//$this->dropData();
+		if ($this->keepAllData == false && $this->keepDataForNext == false) {
+        //    $this->dropData();
+        }
         unset($this->Vehicle);
         unset($this->VehiclePart);
 		unset($this->Mongo);
@@ -396,8 +491,7 @@ class MongodbAssociationsTest extends CakeTestCase {
  * @access public
  */
 	public function dropData() {
-        //die("DROPP");
-		try {
+        try {
 			$db = $this->mongodb
 				->connection
 				->selectDB($this->_config['database']);
@@ -426,10 +520,10 @@ class MongodbAssociationsTest extends CakeTestCase {
         }
         foreach (array_keys($expected) as $key) {
             if (!key_exists($key, $result)) {
-                if ($this->debug){
-                    debug($result); debug($expected); xdebug_print_function_stack(); die();
+                if (!empty($_GET['debug'])){
+                    debug($result); debug($expected); xdebug_print_function_stack(); ob_flush();
                 }
-                $this->fail("Key '{$key}' missing in actual array.");
+                $this->fail("Key '{$key}' missing in resulting array. Enable debug output to inspect the arrays.");
             }
         }
         foreach (array_keys($result) as $key) {
@@ -438,6 +532,13 @@ class MongodbAssociationsTest extends CakeTestCase {
             }
         }
         $this->assertEquals($expected, $result);
+    }
+    
+    public function debug($what){
+        if (!empty($_GET['debug'])){
+            debug($what);
+            ob_flush();
+        }
     }
     
     

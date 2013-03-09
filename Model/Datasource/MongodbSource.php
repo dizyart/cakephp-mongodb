@@ -13,7 +13,7 @@
  *
  * Copyright 2010, Yasushi Ichikawa http://github.com/ichikaway/
  *
- * Contributors: Predominant, Jrbasso, tkyk, AD7six
+ * Contributors: Predominant, Jrbasso, tkyk, AD7six, DizyArt
  *
  * Licensed under The MIT License
  * Redistributions of files must retain the above copyright notice.
@@ -22,6 +22,12 @@
  * @package       mongodb
  * @subpackage    mongodb.models.datasources
  * @license       http://www.opensource.org/licenses/mit-license.php The MIT License
+ * 
+ * @todo Apply MongodbDource::conditions() method to all conditions instead of manual '$in' keying
+ * @todo Query Sanitizing - all fields from associated models should be removed from the query before execution. There are no joins, so only overhead is created.
+ * @todo Unify Schemaless behavior with field selection
+ * @todo Recheck 'id' to '_id' translation
+ * 
  */
 
 App::uses('DboSource', 'Model/Datasource');
@@ -350,7 +356,7 @@ class MongodbSource extends DboSource {
  * faster and simpler to tell cake that the interface is /not/ supported so it assumes that
  * <insert name of your table here> exists
  * 
- * This function was removed from DataSource in Cake 2.2.0
+ * This function was removed from DataSource class in Cake 2.2.0
  *
  * @param mixed $interface
  * @return void
@@ -968,6 +974,8 @@ class MongodbSource extends DboSource {
 			$id = $conditions['id'];
 			unset($conditions['id']);
 		}
+        
+        $conditions = $this->conditions($conditions);
 
 		$mongoCollectionObj = $this->_db
 			->selectCollection($Model->table);
@@ -1017,6 +1025,9 @@ class MongodbSource extends DboSource {
 
 		$this->_setEmptyValues($queryData);
 		extract($queryData);
+        if (!empty($fields) && is_string($fields)) { 
+            $fields = array($fields); 
+        }
 
 		if (!empty($order[0])) {
 			$order = array_shift($order);
@@ -1209,7 +1220,6 @@ class MongodbSource extends DboSource {
 
 
 		if (!is_null($recursive)) {
-            /** @todo what is $_recursive? */
 			$model->recursive = $_recursive;
 		}
 
@@ -1419,7 +1429,37 @@ class MongodbSource extends DboSource {
 		}
 		return $return;
 	}
-
+    
+/**
+ * Creates a MongoDB conditions array from passed conditions data.
+ * 
+ * @param array $conditions Array of database-agnostic conditions
+ * @param type $quoteValues unused, inherited from DBOsource
+ * @param type $where unused
+ * @param type $model Model upon which the conditions are made
+ * @return array Array of Mongo compatible conditions
+ * 
+ * @todo Expand the conditions to allow AND/OR/XOR?(might be complex)/NOT/LT(e)/GT(e)/LIKE(regex)
+ */
+    public function conditions($conditions, $quoteValues = true, $where = true, $model = null) {
+        $return = array();
+        foreach ($conditions as $key => $value){
+            if (is_array($value)){
+                $numeric = (class_exists('Hash')) ? Hash::numeric(array_keys($value)) : Set::numeric(array_keys($value));
+                if ($numeric) {
+                    $return[$key] = array('$in' => $value);
+                }
+                else {
+                    $return[$key] = $value;
+                }
+            }
+            else { // non-array conditions
+                $return[$key] = $value;
+            }
+        }
+        return $return;
+    }
+    
 /**
  * Set empty values, arrays or integers, for the variables Mongo uses
  *
@@ -1744,7 +1784,11 @@ class MongodbSource extends DboSource {
                         'recursive' => $recursive - 1,
                         );
                 
-                if (isset($assocData['with']) && !empty($assocData['with'])) { /** @todo replace with $model->joinModel($this->hasAndBelongsToMany[$assoc]['with']); */
+                if (isset($assocData['with']) && !empty($assocData['with'])) { 
+                    /** 
+                     * @todo replace 'with' with $model->joinModel($this->hasAndBelongsToMany[$assoc]['with']); 
+                     * @todo cleanup unecessary field checks (for schemaless models)
+                     */
 					$joinKeys = array($assocData['foreignKey'], $assocData['associationForeignKey']);
 					list($with, $joinFields) = $model->joinModel($assocData['with'], $joinKeys);
                     if (array_intersect($joinFields, $joinKeys) !== $joinKeys) {
@@ -1766,7 +1810,9 @@ class MongodbSource extends DboSource {
 					$joinTbl = $assocData['joinTable'];
 					$joinAlias = $this->fullTableName($assocData['joinTable']);
 				}
-                $params['fields'] = array_merge($this->fields($linkModel, $association, $assocData['fields']), $joinFields);
+                
+                
+                $params['fields'] = (!empty($assocData['fields'])) ? array_merge($this->fields($linkModel, $association, $assocData['fields']), $joinFields) : '';
                 $params['limit'] = $assocData['limit'];
                 $params['order'] = $assocData['order'];
                 /** $query = array(

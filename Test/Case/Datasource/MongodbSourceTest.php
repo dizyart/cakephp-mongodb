@@ -22,6 +22,7 @@
 App::uses('Model', 'Model');
 App::uses('AppModel', 'Model');
 App::uses('MongodbSource', 'Mongodb.Model/Datasource');
+App::uses('MongodbAppModel', 'Mongodb.Model');
 
 
 /**
@@ -30,7 +31,7 @@ App::uses('MongodbSource', 'Mongodb.Model/Datasource');
  * @package       app
  * @subpackage    app.model.post
  */
-class Post extends AppModel {
+class Post extends MongodbAppModel {
 
 	public $useDbConfig = 'test_mongo';
 
@@ -84,7 +85,7 @@ class Post extends AppModel {
  * @package       mongodb
  * @subpackage    mongodb.tests.cases.datasources
  */
-class MongoArticle extends AppModel {
+class MongoArticle extends MongodbAppModel {
 
 	public $useDbConfig = 'test_mongo';
 }

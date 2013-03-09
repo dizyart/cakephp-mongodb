@@ -18,6 +18,8 @@
  */
 App::uses('Model', 'Model');
 App::uses('AppModel', 'Model');
+App::uses('MongodbSource', 'Mongodb.Model/Datasource');
+App::uses('MongodbAppModel', 'Mongodb.Model');
 
 
 /**
@@ -27,7 +29,7 @@ App::uses('AppModel', 'Model');
  * @package       Mongodb
  * @subpackage    Mongodb.Test.Case.Behavior
  */
-class MyCompany extends AppModel {
+class MyCompany extends MongodbAppModel {
 
 /**
  * useDbConfig property
@@ -36,7 +38,7 @@ class MyCompany extends AppModel {
  * @var string 'mongo'
  * @access public
  */
-    public $useDbConfig = 'mongo';
+    public $useDbConfig = 'test_mongo';
 
 /**
  * mongoSchema property

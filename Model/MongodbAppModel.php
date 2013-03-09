@@ -41,6 +41,8 @@ class MongodbAppModel extends AppModel {
  * @param integer|string $id ID of record in this model
  * @param DataSource $db
  * @return void
+ * @todo Reduce the code to minimum to ensure compatibility with other Cake versions
+ * @todo write tests for other data structures, increase code coverage
  */
 	protected function _saveMulti($joined, $id, $db) {
 		foreach ($joined as $assoc => $data) {
@@ -73,7 +75,7 @@ class MongodbAppModel extends AppModel {
 				}
 
 				foreach ((array)$data as $row) {
-					if ((is_string($row) && (strlen($row) == 36 || strlen($row) == 16)) || is_numeric($row)) {
+					if ((is_string($row) && (strlen($row) == 24)) || (is_object($row) && $row instanceof MongoId) ) {
 						$newJoins[] = $row;
 						$values = array($id, $row);
 						if ($isUUID && $primaryAdded) {
