@@ -21,30 +21,50 @@
  */
 App::uses('Model', 'Model');
 App::uses('AppModel', 'Model');
+App::uses('MongodbAppModel', 'Mongodb.Model');
 App::uses('MongodbSource', 'Mongodb.Model/Datasource');
 
-class Vehicle extends AppModel {
+
+
+class Vehicle extends MongodbAppModel {
     public $useDbConfig = 'test_mongo';
     public $hasMany = array(
         'VehiclePart' => array()
     );
+    public $belongsTo = array(
+        //'Manufacturer'
+    );
     
     public $hasAndBelongsToMany = array(
-        'Color'
+        'CarOwner' => array(
+            'className' => "Owner",
+			'joinTable' => "owners_vehicles",
+			'with' => "OwnersVehicle",
+			'foreignKey' => "car_id",
+			'associationForeignKey' => "owner_id"
+        )
     );
 }
-class VehiclePart extends AppModel {
+class VehiclePart extends MongodbAppModel {
     public $useDbConfig = 'test_mongo';
     //public $useTable = 'vehicle_parts';
     public $belongsTo = array(
-        'Vehicle' => array()
+        'Vehicle' => array(),
+        //'Manufacturer'
     );
 }
 
-class Color extends AppModel {
+class Manufacturer extends MongodbAppModel {
+    public $useDbConfig = 'test_mongo';
+    public $hasMany = array('VehiclePart', 'Vehicle');
+}
+
+class Owner extends MongodbAppModel {
     public $useDbConfig = 'test_mongo';
     public $hasAndBelongsToMany = array(
-        'Vehicle' => array()
+        'Vehicle' => array(
+            'associationForeignKey' => 'car_id'
+        )
     );
 }
 
@@ -67,7 +87,7 @@ class Engine extends VehiclePart {
  * @property Model $Car
  * @property Model $Engine
  */
-class MongodbSourceTest extends CakeTestCase {
+class MongodbAssociationsTest extends CakeTestCase {
     
     public $debug = true;
 
@@ -195,6 +215,7 @@ class MongodbSourceTest extends CakeTestCase {
     function testCheckInheritance(){
         $expected = array(
             'VehiclePart' => 'VehiclePart',
+            'MongodbAppModel' => 'MongodbAppModel',
             'AppModel' => 'AppModel',
             'Model' => 'Model',
             'Object' => 'Object'
@@ -211,9 +232,100 @@ class MongodbSourceTest extends CakeTestCase {
         $this->Engine->save($Engine);
     }
     
+    function testSaveAssociatedDeep() {
+        $this->Vehicle->bindModel(array('belongsTo' => array('Manufacturer')), false);
+        $this->Vehicle->VehiclePart->bindModel(array('belongsTo' => array('Manufacturer')), false);
+        $manufacturer = array(
+            'name' => 'Ford',
+            'established' => 'June 16, 1903'
+        );
+        $this->Manufacturer->save($manufacturer);
+        $manufacturer_id = $this->Manufacturer->getInsertId();
+        $vehicle_id = (string) new MongoId();
+        $manufacturer2_id = (string) new MongoId();
+        $data = array(
+            'Vehicle' => array('name' => 'Model T', 'manufacturer_id' => $manufacturer_id, 'id' => $vehicle_id),
+            'VehiclePart' => array(
+                array('class' => 'Transmission', 'type' => 'planetary gear', 'manufacturer_id' => $manufacturer_id),
+                array('class' => 'Chassis', 'type' => 'Left replacement door', 'Manufacturer' => array('id' => $manufacturer2_id, 'name' => 'The Model T Ford Club International', 'established' => 'December 1952')),
+            )
+        );
+        $this->Vehicle->saveAssociated($data, array('deep' => true));
+        $this->Vehicle->recursive = 3;
+        $result = $this->Vehicle->find('first', array('conditions' => array('id' => $vehicle_id)));
+        $expect = array(
+            'Vehicle' => array(
+                'id' => (string) $vehicle_id,
+                'name' => 'Model T',
+                'manufacturer_id' => (string) $manufacturer_id
+            ),
+            'Manufacturer' => array(
+                'name' => 'Ford',
+                'established' => 'June 16, 1903',
+                'id' => (string) $manufacturer_id
+            ),
+            'VehiclePart' => array(
+                (int) 0 => array(
+                    'vehicle_id' => (string) $vehicle_id,
+                    'manufacturer_id' => (string) $manufacturer_id,
+                    'class' => 'Transmission',
+                    'type' => 'planetary gear',
+                    'Vehicle' => array(
+                        'id' => (string) $vehicle_id,
+                        'name' => 'Model T',
+                        'manufacturer_id' => (string) $manufacturer_id,
+                    ),
+                    'Manufacturer' => array(
+                        'id' => (string) $manufacturer_id,
+                        'name' => 'Ford',
+                        'established' => 'June 16, 1903',
+                    )
+                ),
+                (int) 1 => array(
+                    'manufacturer_id' => (string) $manufacturer2_id,
+                    'vehicle_id' => (string) $vehicle_id,
+                    'class' => 'Chassis',
+                    'type' => 'Left replacement door',
+                    'Vehicle' => array(
+                        'id' => (string) $vehicle_id,
+                        'name' => 'Model T',
+                        'manufacturer_id' => (string) $manufacturer_id,
+                    ),
+                    'Manufacturer' => array(
+                        'id' => (string) $manufacturer2_id,
+                        'name' => 'The Model T Ford Club International',
+                        'established' => 'December 1952',
+                    )
+                )
+            )
+        );
+        $this->assertArraySubsetMatches($result, $expect);
+    }
+    
+    
+    function testSaveHabtm(){
+        $vehicle_id = new MongoId('abcdef1234567890');
+        $vehicle_data = array('id' => $vehicle_id, 'name' => 'Corvette V12');
+        $this->Vehicle->save($vehicle_data);
+        $data = array(
+            array(
+            'Vehicle' => array('id' => (string)$vehicle_id),
+            'Owner' => array('name' => 'John Longbottom')
+            ),
+            array(
+            'Vehicle' => array('id' => (string)$vehicle_id),
+            'Owner' => array('name' => 'Jim Lipton')
+            ),
+        );
+        $this->Owner->saveAll($data);
+        $this->Vehicle->recursive = 1;
+        $return = $this->Vehicle->read(null, $vehicle_id);
+        debug($return); die();
+    }
+    
     
     function startTest($method) {
-        $this->dropData();
+        //$this->dropData();
     }
 
 /**
@@ -242,6 +354,8 @@ class MongodbSourceTest extends CakeTestCase {
 		$this->Vehicle = ClassRegistry::init(array('class' => 'Vehicle'), true);
 		$this->VehiclePart = ClassRegistry::init(array('class' => 'VehiclePart'), true);
         $this->Engine = ClassRegistry::init(array('class' => 'Engine'), true);
+        $this->Manufacturer = ClassRegistry::init(array('class' => 'Manufacturer'), true);
+        $this->Owner = ClassRegistry::init(array('class' => 'Owner'), true);
 
 		$this->mongodb = ConnectionManager::getDataSource($this->Vehicle->useDbConfig);
 		$this->mongodb->connect();
@@ -282,7 +396,7 @@ class MongodbSourceTest extends CakeTestCase {
  * @access public
  */
 	public function dropData() {
-        
+        //die("DROPP");
 		try {
 			$db = $this->mongodb
 				->connection

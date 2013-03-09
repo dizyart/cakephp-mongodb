@@ -226,24 +226,26 @@ class MongodbSource extends DboSource {
  * @param array $config
  * @param string $version  version of MongoDriver
  */
-		public function createConnectionName($config, $version) {
-			$host = null;
+    public function createConnectionName($config, $version) {
+        $host = null;
 
-			if ($version >= '1.0.2') {
-				$host = "mongodb://";
-			} else {
-				$host = '';
-			}
-			$hostname = $config['host'] . ':' . $config['port'];
+        if ($version >= '1.0.2') {
+            $host = "mongodb://";
+        } 
+        else {
+            $host = '';
+        }
+        $hostname = $config['host'] . ':' . $config['port'];
 
-			if(!empty($config['login'])){
-				$host .= $config['login'] .':'. $config['password'] . '@' . $hostname . '/'. $config['database'];
-			} else {
-				$host .= $hostname;
-			}
+        if(!empty($config['login'])){
+            $host .= $config['login'] .':'. $config['password'] . '@' . $hostname . '/'. $config['database'];
+        } 
+        else {
+            $host .= $hostname;
+        }
 
-			return $host;
-		}
+        return $host;
+    }
 
 
 /**
@@ -256,8 +258,8 @@ class MongodbSource extends DboSource {
  */
 	public function insertMulti($table, $fields, $values) {
 		$table = $this->fullTableName($table);
-
-		if (!is_array($fields) || !is_array($values)) {
+        
+        if (!is_array($fields) || !is_array($values)) {
 			return false;
 		}
 
@@ -276,18 +278,20 @@ class MongodbSource extends DboSource {
 			$data[] = array_combine($fields, $row);
 		}
 		$this->_prepareLogQuery($table); // just sets a timer
-		try{
+        
+        try{
             if ($this->_driverVersion >= '1.3.0') {
 				$return = $this->_db
 				->selectCollection($table)
 				->batchInsert($data, array('safe' => true));
 			} else {
-				$return = $this->_db
+                $return = $this->_db
 				->selectCollection($table)
 				->batchInsert($data, true);
 			}
+            
 			
-		} catch (MongoException $e) {
+		} catch (Exception $e) {
 			$this->error = $e->getMessage();
 			trigger_error($this->error);
 		}
@@ -419,7 +423,8 @@ class MongodbSource extends DboSource {
 		if (!empty($Model->mongoSchema) && is_array($Model->mongoSchema)) {
 			$schema = $Model->mongoSchema;
 			return $schema + array($Model->primaryKey => $this->_defaultSchema['_id']);
-		} elseif ($this->isConnected() && is_a($Model, 'Model') && !empty($Model->Behaviors)) {
+		} 
+        elseif ($this->isConnected() && is_a($Model, 'Model') && !empty($Model->Behaviors)) {
 			$Model->Behaviors->attach('Mongodb.Schemaless');
 			if (!$Model->data) {
 				if ($this->_db->selectCollection($Model->table)->count()) {
@@ -427,7 +432,8 @@ class MongodbSource extends DboSource {
 				}
 			}
 		}
-		return $this->deriveSchemaFromData($Model);
+		$return = $this->deriveSchemaFromData($Model);
+        return $return;
 	}
 
 /**
@@ -603,12 +609,13 @@ class MongodbSource extends DboSource {
 			$return = $this->_db
 				->selectCollection($Model->table)
 				->distinct($keys, $params);
-		} catch (MongoException $e) {
+		} 
+        catch (MongoException $e) {
 			$this->error = $e->getMessage();
 			trigger_error($this->error);
 		}
 		if ($this->fullDebug) {
-			$this->logQuery("db.{$Model->useTable}.distinct( :keys, :params )", compact('keys', 'params'));
+			$this->logQuery("db.{$Model->table}.distinct( :keys, :params )", compact('keys', 'params'));
 		}
 
 		return $return;
@@ -816,21 +823,23 @@ class MongodbSource extends DboSource {
 		if(empty($Model->mongoNoSetOperator)) {
 			if(!preg_grep('/^\$/', array_keys($data))) {
 				$data = array('$set' => $data);
-			} else {
+			} 
+            else {
 				if(!empty($data[$updateField])) {
 					$modified = $data[$updateField];
 					unset($data[$updateField]);
 					$data['$set'] = array($updateField => $modified);
 				}
 			}
-		} elseif(substr($Model->mongoNoSetOperator,0,1) === '$') {
+		} 
+        elseif(substr($Model->mongoNoSetOperator,0,1) === '$') {
 			if(!empty($data[$updateField])) {
 				$modified = $data[$updateField];
 				unset($data[$updateField]);
 				$data = array($Model->mongoNoSetOperator => $data, '$set' => array($updateField => $modified));
-			} else {
+			} 
+            else {
 				$data = array($Model->mongoNoSetOperator => $data);
-
 			}
 		}
 
@@ -1079,7 +1088,8 @@ class MongodbSource extends DboSource {
 					compact('conditions', 'fields', 'order', 'limit', 'offset', 'count')
 				);
 			}
-		} else {
+		} 
+        else {
 			$options = array_filter(array(
 				'findandmodify' => $model->table,
 				'query' => $conditions,
@@ -1150,7 +1160,8 @@ class MongodbSource extends DboSource {
 
 		if ($model->recursive == -1) {
 			$_associations = array();
-		} else if ($model->recursive == 0) {
+		} 
+        else if ($model->recursive == 0) {
 			unset($_associations[2], $_associations[3]);
 		}
 
@@ -1176,10 +1187,12 @@ class MongodbSource extends DboSource {
                     if (!isset($linkedModels[$type . '/' . $association])) {
 						if ($model->useDbConfig === $linkModel->useDbConfig) {
 							$db = $this;
-						} else {
+						} 
+                        else {
 							$db = ConnectionManager::getDataSource($linkModel->useDbConfig);
 						}
-					} elseif ($model->recursive > 1 && ($type === 'belongsTo' || $type === 'hasOne')) {
+					} 
+                    elseif ($model->recursive > 1 && ($type === 'belongsTo' || $type === 'hasOne')) {
 						$db = $this;
 					}
                     
@@ -1300,10 +1313,12 @@ class MongodbSource extends DboSource {
 			if (isset($query['out']['inline']) && $query['out']['inline'] === 1) {
 				if (is_array($result['results'])) {
 					$data = $result['results'];
-				}else{
+				}
+                else{
 					$data = false;
 				}
-			}else {
+			}
+            else {
 				$data = $this->_db->selectCollection($result['result'])->find();
 				if(!empty($timeout)) {
 					$data->timeout($timeout);
@@ -1509,6 +1524,7 @@ class MongodbSource extends DboSource {
  * @access protected
  */
 	protected function _convertId(&$mixed, $conditions = false) {
+        /** @todo fallback if Object must be instance of or throw an InvalidID exception */
 		if (is_numeric($mixed)) {
 			return;
 		}
@@ -1623,10 +1639,7 @@ class MongodbSource extends DboSource {
  */
 	public function queryAssociation(Model $model, &$linkModel, $type, $association, $assocData, &$queryData, $external, &$resultSet, $recursive, $stack) {
             $idList = array();
-            $keyName = $model->primaryKey;
-            if($type === 'belongsTo') {
-                $keyName = $assocData['foreignKey'];
-            }
+            $keyName = ($type === 'belongsTo') ? $assocData['foreignKey'] : $model->primaryKey;
             foreach($resultSet as $modelData) {
                 if(!empty($modelData[$model->alias])) {
                     $idList[] = $modelData[$model->alias][$keyName];
@@ -1634,12 +1647,12 @@ class MongodbSource extends DboSource {
             }
         switch($type):
             case 'hasMany':
-                $cond = array($assocData['foreignKey'] => array('$in' => $idList));
+                $_conditions = array($assocData['foreignKey'] => array('$in' => $idList));
                 if(is_array($assocData['conditions'])) {
-                    $cond = array_merge($cond, $assocData['conditions']);
+                    $_conditions = array_merge($_conditions, $assocData['conditions']);
                 }
                 $params = array(
-                        'conditions' => $cond,
+                        'conditions' => $_conditions,
                         'recursive' => $recursive - 1,
                         );
                 $hasManyResult = $linkModel->find('all', $params);
@@ -1660,12 +1673,12 @@ class MongodbSource extends DboSource {
                 break;
 
             case 'hasOne':
-                $cond = array($assocData['foreignKey'] => array('$in' => $idList));
+                $_conditions = array($assocData['foreignKey'] => array('$in' => $idList));
                 if(is_array($assocData['conditions'])) {
-                    $cond = array_merge($cond, $assocData['conditions']);
+                    $_conditions = array_merge($_conditions, $assocData['conditions']);
                 }
                 $params = array(
-                    'conditions' => $cond,
+                    'conditions' => $_conditions,
                     'recursive' => $recursive - 1,
                 );
                 $hasOneResult = $linkModel->find('all', $params);
@@ -1683,7 +1696,8 @@ class MongodbSource extends DboSource {
                     foreach($resultSet as $key => $val) {
                         if(!empty($hasOneResultSet[ $val[$model->alias][$model->primaryKey] ])) {
                             $resultSet[$key][$model->alias][$linkModel->alias] = $hasOneResultSet[ $val[$model->alias][$model->primaryKey] ];
-                        } else {
+                        } 
+                        else {
                             $resultSet[$key][$model->alias][$linkModel->alias] = array();
                         }
                     }
@@ -1691,12 +1705,12 @@ class MongodbSource extends DboSource {
                 break;
 
             case 'belongsTo':
-                $cond = array($linkModel->primaryKey => array('$in' => $idList));
+                $_conditions = array($linkModel->primaryKey => array('$in' => $idList));
                 if(is_array($assocData['conditions'])) {
-                    $cond = array_merge($cond, $assocData['conditions']);
+                    $_conditions = array_merge($_conditions, $assocData['conditions']);
                 }
                 $params = array(
-                        'conditions' => $cond,
+                        'conditions' => $_conditions,
                         'recursive' => $recursive - 1,
                         );
                 $belongsToResult = $linkModel->find('all', $params);
@@ -1711,14 +1725,222 @@ class MongodbSource extends DboSource {
                     foreach($resultSet as $key => $val) {
                         if(!empty($belongsToResultSet[ $val[$model->alias][$assocData['foreignKey']] ])) {
                             $resultSet[$key][$linkModel->alias] = $belongsToResultSet[ $val[$model->alias][$assocData['foreignKey']] ];
-                        } else {
+                        }
+                        else {
                             $resultSet[$key][$linkModel->alias] = array();
                         }
                     }
                 }
                 break;
+            
+            case 'hasAndBelongsToMany':
+                $_conditions = array($assocData['foreignKey'] => array('$in' => $idList));
+                if(is_array($assocData['conditions'])) {
+                    $_conditions = array_merge($_conditions, $assocData['conditions']);
+                }
+                
+                $params = array(
+                        'conditions' => $_conditions,
+                        'recursive' => $recursive - 1,
+                        );
+                
+                if (isset($assocData['with']) && !empty($assocData['with'])) { /** @todo replace with $model->joinModel($this->hasAndBelongsToMany[$assoc]['with']); */
+					$joinKeys = array($assocData['foreignKey'], $assocData['associationForeignKey']);
+					list($with, $joinFields) = $model->joinModel($assocData['with'], $joinKeys);
+                    if (array_intersect($joinFields, $joinKeys) !== $joinKeys) {
+                        //ADD the join keys for schemaless join models
+                        /** @todo Account for schemaless join more conistently, this is basically guesswork */
+                        $joinFields = array_merge($joinFields, $joinKeys);
+                    }
+
+					$joinTbl = $model->{$with};
+					$joinAlias = $joinTbl;
+
+					if (is_array($joinFields) && !empty($joinFields)) {
+						$joinAssoc = $joinAlias = $model->{$with}->alias;
+						$joinFields = $this->fields($model->{$with}, $joinAlias, $joinFields);
+					} else {
+						$joinFields = array();
+					}
+				} else {
+					$joinTbl = $assocData['joinTable'];
+					$joinAlias = $this->fullTableName($assocData['joinTable']);
+				}
+                $params['fields'] = array_merge($this->fields($linkModel, $association, $assocData['fields']), $joinFields);
+                $params['limit'] = $assocData['limit'];
+                $params['order'] = $assocData['order'];
+                /** $query = array(
+					'conditions' => $assocData['conditions'],
+					'limit' => $assocData['limit'],
+					'table' => $this->fullTableName($linkModel),
+					'alias' => $association,
+					'fields' => array_merge($this->fields($linkModel, $association, $assocData['fields']), $joinFields),
+					'order' => $assocData['order'],
+					'group' => null,
+					'joins' => array(array(
+						'table' => $joinTbl,
+						'alias' => $joinAssoc,
+						'conditions' => $this->getConstraint('hasAndBelongsToMany', $model, $linkModel, $joinAlias, $assocData, $association)
+					))
+				); */
+                
+                
+                
+                $linkResults = $joinTbl->find('all', $params);
+                if (class_exists('Hash')){
+                    $associationIds = Hash::extract($linkResults, "{n}.$joinAlias.{$assocData['associationForeignKey']}");
+                } else {
+                    $associationIds = Set::extract($linkResults, "{n}.$joinAlias.{$assocData['associationForeignKey']}");
+                }
+                
+                $_conditions = array($linkModel->primaryKey => array('$in' => $associationIds));
+                if(is_array($assocData['conditions'])) {
+                    $_conditions = array_merge($_conditions, $assocData['conditions']);
+                }
+                $params['conditions'] = $_conditions;
+                
+                $habtmResults = $linkModel->find('all', $params);
+                
+                if (!empty($habtmResults)){
+                    foreach($resultSet as $index => $record) {
+                        /** @todo mangle data here if necessary */
+                    }
+                    $this->_mergeHabtm($resultSet, $linkResults, $habtmResults, $association, $model, $linkModel);
+                }
+                
+
+                //// TAKEN FROM DBO SOURCE
+                $joinFields = array();
+				$joinAssoc = null;
+
+				if (isset($assocData['with']) && !empty($assocData['with'])) {
+					$joinKeys = array($assocData['foreignKey'], $assocData['associationForeignKey']);
+					list($with, $joinFields) = $model->joinModel($assocData['with'], $joinKeys);
+
+					$joinTbl = $model->{$with};
+					$joinAlias = $joinTbl;
+
+					if (is_array($joinFields) && !empty($joinFields)) {
+						$joinAssoc = $joinAlias = $model->{$with}->alias;
+						$joinFields = $this->fields($model->{$with}, $joinAlias, $joinFields);
+					} else {
+						$joinFields = array();
+					}
+				} else {
+					$joinTbl = $assocData['joinTable'];
+					$joinAlias = $this->fullTableName($assocData['joinTable']);
+				}
+				$query = array(
+					'conditions' => $assocData['conditions'],
+					'limit' => $assocData['limit'],
+					'table' => $this->fullTableName($linkModel),
+					'alias' => $association,
+					'fields' => array_merge($this->fields($linkModel, $association, $assocData['fields']), $joinFields),
+					'order' => $assocData['order'],
+					'group' => null,
+					'joins' => array(array(
+						'table' => $joinTbl,
+						'alias' => $joinAssoc,
+						'conditions' => $this->getConstraint('hasAndBelongsToMany', $model, $linkModel, $joinAlias, $assocData, $association)
+					))
+				);
+                
+                
+                //// END TAKEN FROM DBO
+                
+                break;
         endswitch; //$type
     }
+    
+/**
+ * mergeHabtm - Merge the results of habtm relations.
+ *
+ *
+ * @param array $resultSet Data to merge into
+ * @param array $joinResults The data from the join table
+ * @param array $merge Data to merge
+ * @param string $association Name of Model being Merged
+ * @param Model $model Model being merged onto
+ * @param Model $linkModel Model being merged $model->habtm[$association] => foreignKey, associationFK
+ * @return void
+ * $resultSet, $linkResults, $habtmResults, $association, $model, $linkModel
+ * 
+ * $model	Vehicle		
+	hasAndBelongsToMany	array[1]		
+		[Owner]	array[15]		
+			[className]	string	"Owner"	
+			[joinTable]	string	"owners_vehicles"	
+			[with]	string	"OwnersVehicle"	
+			[foreignKey]	string	"vehicle_id"	
+			[associationForeignKey]	string	"owner_id"	
+
+$linkResults	array[2]		
+	[0]	array[1]		
+		[OwnersVehicle]	array[3]		
+			[owner_id]	string	"513a943db58a90840400009c"	
+			[vehicle_id]	string	"513a943db58a90840400009b"	
+			[id]	string	"513a943db58a90840400009d"	
+				
+				
+				
+$resultSet	array[1]		
+	[0]	array[1]		
+		[Vehicle]	array[4]		
+			[name]	string	"Corvette V12"	
+			[id]	string	"513a943db58a90840400009b"	
+	
+	
+	
+$merge	array[2]		
+	[0]			
+		[Owner]		
+			[name]	string	"John Longbottom"	
+			[modified]	MongoDate		
+			[created]	MongoDate		
+			[id]	string	"513a943db58a90840400009c"	
+ * 
+ */
+	protected function _mergeHabtm(&$resultSet, $joinResults, $merge, $association, $model, $linkModel) {
+        $associationData = $model->hasAndBelongsToMany[$association];
+        $joinPK = $model->hasAndBelongsToMany[$association]['foreignKey'];
+        $joinFK = $model->hasAndBelongsToMany[$association]['associationForeignKey'];
+		$modelAlias = $model->alias;
+		$modelPK = $model->primaryKey;
+		
+		foreach ($resultSet as &$result) {
+			if (!isset($result[$modelAlias])) {
+				continue;
+			}
+			$merged = array();
+			foreach ($joinResults as $joinData) {
+                
+                if ($joinData[$associationData['with']][$joinPK] == $result[$modelAlias][$modelPK]){
+                    $mergeId = $joinData[$associationData['with']][$joinFK];
+                    foreach($merge as $mergeData){
+                        if ($mergeId == $mergeData[$association][$linkModel->primaryKey]){
+                            $result[$association][] = $mergeData[$association];
+                        }
+                    }
+                }
+				if ( false && $result[$modelAlias][$modelPK] === $data[$association][$modelFK]) {
+					if (count($data) > 1) {
+						$data = array_merge($data[$association], $data);
+						unset($data[$association]);
+						foreach ($data as $key => $name) {
+							if (is_numeric($key)) {
+								$data[$association][] = $name;
+								unset($data[$key]);
+							}
+						}
+						$merged[] = $data;
+					} else {
+						$merged[] = $data[$association];
+					}
+				}
+			}
+			//$result = Hash::mergeDiff($result, array($association => $merged));
+		}
+	}
     
     /**
      * Count function used in read, refactored
@@ -1771,7 +1993,9 @@ class MongodbSource extends DboSource {
  */
 
 function MongoDbDateFormatter($date=null){
-    $error_type = (defined('E_USER_DEPRECATED')) ? E_USER_DEPRECATED : E_USER_NOTICE;
-    trigger_error("Deprecated, please use MongodbSource::dateFormatter() instead", $error_type);
+    if (Configure::read('debug') > 0){
+        $error_type = (defined('E_USER_DEPRECATED')) ? E_USER_DEPRECATED : E_USER_NOTICE;
+        trigger_error("Deprecated, please use MongodbSource::dateFormatter() instead", $error_type);
+    }
     return MongodbSource::dateFormatter($date);
 }
