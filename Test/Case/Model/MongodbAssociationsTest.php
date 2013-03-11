@@ -42,11 +42,11 @@ class MongodbAssociationsTest extends MongoTestCase {
  */
 	public function setUp() {
         parent::setUp();
-        $this->Vehicle = ClassRegistry::init(array('class' => 'Vehicle'), true);
-		$this->VehiclePart = ClassRegistry::init(array('class' => 'VehiclePart'), true);
-        $this->Engine = ClassRegistry::init(array('class' => 'Engine'), true);
-        $this->Manufacturer = ClassRegistry::init(array('class' => 'Manufacturer'), true);
-        $this->Owner = ClassRegistry::init(array('class' => 'Owner'), true);
+        $this->Vehicle = ClassRegistry::init(array('class' => 'Vehicle', 'ds' => 'test'), true);
+		$this->VehiclePart = ClassRegistry::init(array('class' => 'VehiclePart', 'ds' => 'test'), true);
+        $this->Engine = ClassRegistry::init(array('class' => 'Engine', 'ds' => 'test'), true);
+        $this->Manufacturer = ClassRegistry::init(array('class' => 'Manufacturer', 'ds' => 'test'), true);
+        $this->Owner = ClassRegistry::init(array('class' => 'Owner', 'ds' => 'test'), true);
 	}
     
     public function testSave(){
