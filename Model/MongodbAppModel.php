@@ -113,8 +113,12 @@ class MongodbAppModel extends AppModel {
 				} else {
 					$dbMulti = $db;
 				}
-
-				$isUUID = !empty($this->{$join}->primaryKey) && $this->{$join}->_isUUIDField($this->{$join}->primaryKey);
+                if (method_exists($this->{$join}, '_isUUIDField')){
+                    $isUUID = !empty($this->{$join}->primaryKey) && $this->{$join}->_isUUIDField($this->{$join}->primaryKey);
+                }
+                else {
+                    $isUUID = false;
+                }
 
 				$newData = $newValues = $newJoins = array();
 				$primaryAdded = false;
@@ -167,7 +171,9 @@ class MongodbAppModel extends AppModel {
 						'fields' => $associationForeignKey,
 					));
 
-					$oldLinks = Hash::extract($links, "{n}.{$associationForeignKey}");
+					$oldLinks = (class_exists('Hash')) 
+                        ? Hash::extract($links, "{n}.{$associationForeignKey}")
+                        : Set::extract($links, "{n}.{$associationForeignKey}");
 					if (!empty($oldLinks)) {
 						if ($keepExisting && !empty($newJoins)) {
 							$conditions[$associationForeignKey] = array_diff($oldLinks, $newJoins);

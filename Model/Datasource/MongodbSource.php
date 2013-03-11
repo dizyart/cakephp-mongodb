@@ -1318,12 +1318,17 @@ class MongodbSource extends DboSource {
 		if(isset($args[2]) && is_a($args[2], 'Model')) {
 			$this->_prepareLogQuery($args[2]);
 		}
-
-		$return = $this->_db
-			->command($query);
-		if ($this->fullDebug) {
-			$this->logQuery("db.runCommand( :query )", 	compact('query'));
-		}
+        try {
+            if ($this->fullDebug) {
+                $this->logQuery("db.runCommand( :query )", 	compact('query'));
+            }
+            $return = $this->_db
+                ->command($query);
+            
+        } catch(Exception $e) {
+            $this->error = $e->getMessage();
+            throw new MongodbException($this->error);
+        }
 
 		return $return;
 	}
