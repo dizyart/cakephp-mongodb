@@ -13,8 +13,9 @@
  * @link          http://cakephp.org
  * @package       Mongodb
  * @subpackage    Mongodb.Model
- * @since         Mongodb 2.0b
+ * @since         Mongodb 2.0a
  * @license       MIT License (http://www.opensource.org/licenses/mit-license.php)
+ * @todo Possibly move the Inheritance methods to a separate class?
  **/
 
 App::uses('AppModel', 'Model');

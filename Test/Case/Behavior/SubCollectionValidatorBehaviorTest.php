@@ -128,6 +128,8 @@ class SubCollectionValidatorBehaviorTest extends CakeTestCase {
  * @access public
  */
 	public function setUp() {
+        $testModel = ClassRegistry::init('AppModel');
+        $this->skipIf(!method_exists($testModel, 'validator'), "SubCollectionValidator not available for CakePHP v".Configure::version());
         
 		$connections = ConnectionManager::enumConnectionObjects();
 
@@ -152,6 +154,7 @@ class SubCollectionValidatorBehaviorTest extends CakeTestCase {
 
 
     public function startTest($method) {
+        
         //clear Company attributes
         $this->Company->create();
     }

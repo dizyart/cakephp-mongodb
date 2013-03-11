@@ -166,6 +166,7 @@ class SqlCompatibleBehavior extends ModelBehavior {
  * @param mixed $conditions
  * @return void
  * @access protected
+ * @todo Move condition traslations to MongodbSource::conditions()
  */
 	protected function _translateConditions(Model &$Model, &$conditions) {
 		$return = false;
