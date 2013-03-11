@@ -1,6 +1,6 @@
 # mongoDB datasource for CakePHP
 
-Mongodb version: 2.0a
+version: 2.0a
 
 This is an experimental branch by [@dizyart](http://github.com/dizyart/) with a major rework in MongodbSource internals. Most important additions are:
 
