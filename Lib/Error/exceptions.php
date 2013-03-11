@@ -19,7 +19,7 @@
  */
 
 
-class MongodbException extends CakeBaseException {
+class MongodbException extends CakeException {
     
 }
 
