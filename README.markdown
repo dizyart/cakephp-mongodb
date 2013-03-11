@@ -1,5 +1,21 @@
 # mongoDB datasource for CakePHP
 
+Mongodb version: 2.0a
+
+This is an experimental branch by [@dizyart](http://github.com/dizyart/) with a major rework in MongodbSource internals. Most important additions are:
+
+* Tons of bugfixes
+* Associations support
+* Compatibility (PHP 5.x, CakePHP 2.x, Mongo 1.x)
+* MongodbSource strictly inherits from DboSource
+* Extendable Models (experimental)
+
+Still to come:
+
+* Replicasets testing
+* Cross-db Models tests
+* Behaviors for proper NoSQL references (only standard SQL references are currently supported)
+
 ## Requirements
 PHP5, 
 pecl mongo (http://php.net/mongo)
