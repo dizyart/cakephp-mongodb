@@ -15,6 +15,7 @@ Still to come:
 * Replicasets testing
 * Cross-db Models tests
 * Behaviors for proper NoSQL references (only standard SQL references are currently supported)
+* Documentation and examples (just look at tests until then)
 
 ## Requirements
 PHP5, 
