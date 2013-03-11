@@ -9,6 +9,7 @@ This is an experimental branch by [@dizyart](http://github.com/dizyart/) with a 
 * Compatibility (PHP 5.x, CakePHP 2.x, Mongo 1.x)
 * MongodbSource strictly inherits from DboSource
 * Extendable Models (experimental)
+* Much mode ([view changelog](./Changelog.md))
 
 Still to come:
 
