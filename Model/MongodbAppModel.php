@@ -27,6 +27,62 @@ App::uses('AppModel', 'Model');
  * @package       Mongodb.Model
  */
 class MongodbAppModel extends AppModel {
+    
+    protected $_modelParentsCache = null;
+    protected $_classParentsCache = null;
+    
+    public $parentModels = array();
+    /**
+     *
+     * @var string ClassName of the parent model which holds the inherited table name ($useTable which is inherited)
+     */
+    public $tableParent = null;
+    
+    protected $_baseModelClass = array('AppModel', 'MongodbAppModel', 'Model');
+    
+    
+    public function __construct($id = false, $table = null, $ds = null) {
+        $this->_collectParentProperties();
+        $this->useTable = $this->resolveUseTable();
+        parent::__construct($id, $table, $ds);
+    }
+    
+    
+    private function _collectParentProperties() {
+        foreach ($this->getModelParents() as $parentModel) {
+            $this->parentModels[$parentModel] = get_class_vars($parentModel);
+        }
+    }
+    
+    public function resolveUseTable() {
+        if ($this->useTable !== null) {
+            return $this->useTable;
+        }
+        $useTable = null;
+        $tableParent = null;
+        foreach($this->parentModels as $class => $vars){
+            if (isset($vars['useTable'])){
+                $useTable = $vars['useTable'];
+                $tableParent = $class;
+            }
+        }
+        if ($useTable === null && count($this->parentModels)>0) {
+            $firstParent = reset($this->parentModels);
+            $tableParent = key($this->parentModels);
+            $useTable = (!empty($firstParent['name'])) ? Inflector::tableize($firstParent['name']) : Inflector::tableize($tableParent);
+        }
+        $this->tableParent = $tableParent;
+        return $useTable;
+    }
+    
+    public function getTableParent(){
+        if (!empty($this->tableParent)){
+            return $this->tableParent;
+        }
+        else {
+            return get_class($this);
+        }
+    }
 
 /**
  * Adapter for Model::_saveMulti
@@ -152,4 +208,66 @@ class MongodbAppModel extends AppModel {
 			}
 		}
 	}
+    
+    public function getParentModelInstance(){
+        $className = $this::getParentModelName();
+        return ClassRegistry::init(array('class' => $className), true);
+    }
+    
+    public function hasParentModel(){
+        $parents = $this->getModelParents();
+        return !empty($parents);
+    }
+    /**
+     * Get the parent models this model inherits. 
+     * 
+     * If you plan on using an intermediate class between AppModel and your Model classes, 
+     * add the name of the base model class to $this->_
+     * 
+     * @return array Parent classes of Model type
+     */
+    public function getModelParents(){
+        if ($this->_modelParentCache !== null) return $this->_modelParentCache;
+        $parents = $this->getClassParents();
+        $return = array();
+        if (is_string($this->_baseModelClass)) {
+                $this->_baseModelClass = array($this->_baseModelClass);
+            }
+        $stop_at = array_merge((array)$this->_baseModelClass, array('AppModel', 'Model', 'MongoAppModel'));
+        foreach($parents as $parent) {
+            
+            if (in_array($parent, $stop_at)){
+                break;
+            }
+            array_push($return, $parent);
+        }
+        $this->_modelParentCache = $return;
+        return $return;
+    }
+    
+    public static function getParentModelName(){
+        $parents = $this->getModelParents();
+        
+    }
+    
+    public final function getClassParents($class=null){
+        if ($this->_classParentsCache === null) {
+            $this->_classParentsCache = array();
+            $_class = (is_object($class) || is_string($class) && class_exists($class))
+                ? $class
+                : get_class($this);
+
+            if (function_exists('class_parents')) {
+                $this->_classParentsCache = array_values(class_parents($_class));
+            }
+            else {
+                while($parent = get_parent_class($_class)){
+                    array_push($this->_classParentsCache, $parent);
+                    $_class = $parent;
+                }
+            }
+        }
+        return $this->_classParentsCache;
+    }
+    
 }

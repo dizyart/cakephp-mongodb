@@ -12,71 +12,12 @@
  *
  * @copyright     Copyright (c) 2010, Yasushi Ichikawa http://github.com/ichikaway/
  * @package       mongodb
- * @subpackage    mongodb.tests.cases.datasources
+ * @subpackage    mongodb.tests.cases.model
  * @license       http://www.opensource.org/licenses/mit-license.php The MIT License
  */
-
-/**
- * Import relevant classes for testing
- */
-App::uses('Model', 'Model');
-App::uses('AppModel', 'Model');
-App::uses('MongodbAppModel', 'Mongodb.Model');
-App::uses('MongodbSource', 'Mongodb.Model/Datasource');
-
-
-
-class Vehicle extends MongodbAppModel {
-    public $useDbConfig = 'test_mongo';
-    public $hasMany = array(
-        'VehiclePart' => array()
-    );
-    public $belongsTo = array(
-        //'Manufacturer'
-    );
-    
-    public $hasAndBelongsToMany = array(
-        'Owner' => array(
-            'className' => "Owner",
-			'joinTable' => "owners_vehicles",
-			'with' => "OwnersVehicle",
-			'foreignKey' => "car_id",
-			'associationForeignKey' => "owner_id"
-        )
-    );
-}
-class VehiclePart extends MongodbAppModel {
-    public $useDbConfig = 'test_mongo';
-    //public $useTable = 'vehicle_parts';
-    public $belongsTo = array(
-        'Vehicle' => array(),
-        //'Manufacturer'
-    );
-}
-
-class Manufacturer extends MongodbAppModel {
-    public $useDbConfig = 'test_mongo';
-    public $hasMany = array('VehiclePart', 'Vehicle');
-}
-
-class Owner extends MongodbAppModel {
-    public $useDbConfig = 'test_mongo';
-    public $hasAndBelongsToMany = array(
-        'Vehicle' => array(
-            'associationForeignKey' => 'car_id'
-        )
-    );
-}
-
-
-class Car extends Vehicle {
-    
-}
-class Engine extends VehiclePart {
-    
-}
-
-
+$mongoTestCase = dirname(__FILE__) . DS . '..' . DS . 'MongoTestCase.php';
+require_once($mongoTestCase);
+require_once(dirname(__FILE__) . DS . 'MongodbAssociationsTest.models.php');
 /**
  * MongoDB Associactions test class
  *
@@ -87,59 +28,26 @@ class Engine extends VehiclePart {
  * @property Model $Car
  * @property Model $Engine
  */
-class MongodbAssociationsTest extends CakeTestCase {
+class MongodbAssociationsTest extends MongoTestCase {
     
     public $debug = true;
-
-/**
- * Database Instance
- *
- * @var resource
- * @access public
- */
-	public $mongodb;
-    
-    /**
-     *
-     * @var boolean If true, test method data persists until next test
-     */
     public $keepDataForNext = false;
-    
-    /**
-     *
-     * @var boolean If true, no data is dropped after each test (but is erased on setup)
-     */
     public $keepAllData = false;
-
+    
 /**
- * Base Config
+ * Sets up the environment for each TEST METHOD
  *
- * @var array
+ * @return void
  * @access public
- *
  */
-	protected $_config = array(
-		'datasource' => 'Mongodb.MongodbSource',
-		'host' => 'localhost',
-		'login' => '',
-		'password' => '',
-		'database' => 'test_mongo',
-		'port' => 27017,
-		'prefix' => '',
-		//'persistent' => true,
-	);
-    
-    public function __construct($name = NULL, array $data = array(), $dataName = '') {
-        parent::__construct($name, $data, $dataName);
-        if (!empty($_GET['debug'])) {
-            $this->keepAllData = true;  
-        }
-    }
-    
-    
-    
-    
-    ###### TEST CASES #####
+	public function setUp() {
+        parent::setUp();
+        $this->Vehicle = ClassRegistry::init(array('class' => 'Vehicle'), true);
+		$this->VehiclePart = ClassRegistry::init(array('class' => 'VehiclePart'), true);
+        $this->Engine = ClassRegistry::init(array('class' => 'Engine'), true);
+        $this->Manufacturer = ClassRegistry::init(array('class' => 'Manufacturer'), true);
+        $this->Owner = ClassRegistry::init(array('class' => 'Owner'), true);
+	}
     
     public function testSave(){
         $this->dropData();
@@ -230,27 +138,6 @@ class MongodbAssociationsTest extends CakeTestCase {
         $this->assertArraySubsetMatches($result, array('Vehicle' => $Vehicle, 'VehiclePart' => array($VehiclePart)));
     }
     
-    
-    function testCheckInheritance(){
-        $expected = array(
-            'VehiclePart' => 'VehiclePart',
-            'MongodbAppModel' => 'MongodbAppModel',
-            'AppModel' => 'AppModel',
-            'Model' => 'Model',
-            'Object' => 'Object'
-        );
-        $actual = class_parents($this->Engine);
-        $this->assertEquals($expected, $actual);
-    }
-    
-    function testInherited(){
-        $Engine = array(
-            'type' => 'V8',
-            'manufacturer' => 'VolksWagen'
-        );
-        $this->Engine->save($Engine);
-    }
-    
     function testSaveAssociatedDeep() {
         $this->Vehicle->bindModel(array('belongsTo' => array('Manufacturer')), false);
         $this->Vehicle->VehiclePart->bindModel(array('belongsTo' => array('Manufacturer')), false);
@@ -323,7 +210,6 @@ class MongodbAssociationsTest extends CakeTestCase {
     
     
     function testSaveHabtm(){
-        $this->keepDataForNext = true;
         $vehicle_id = new MongoId();
         $vehicle_data = array('id' => $vehicle_id, 'name' => 'Corvette V12');
         $this->Vehicle->save($vehicle_data);
@@ -366,11 +252,12 @@ class MongodbAssociationsTest extends CakeTestCase {
             )
         );
         $this->assertArraySubsetMatches($result, $expected);
+        $this->keepDataForNext = true;
     }
     
     
     
-    public function testReplaceHabtm(){
+    public function testReplaceHabtm() {
         $data = $this->Vehicle->find('first', array('conditions'  => array('name' => 'Corvette V12')));
         unset($data['Owner'][0]);
         $ownerIds = array();
@@ -403,57 +290,27 @@ class MongodbAssociationsTest extends CakeTestCase {
         
     }
     
-    
-    
-    
-    
-    
-    
-    
-    
-    function startTest($method){
+    public function testBelongsToUpdate(){
+        
+        $data = array(
+            'VehiclePart' => array(
+                'name' => 'A special door'
+            ),
+            'Vehicle' => array(
+                'name' => 'Car with special doors'
+            )
+        );
+        
+        $this->VehiclePart->saveAssociated($data);
+        $newRecord = $this->VehiclePart->read();
+        //$this->debug($newRecord);
         
     }
-    function endTest($method) {
-        if (!$this->keepDataForNext && !$this->keepAllData){
-            $this->dropData();
-        }
-        $this->keepDataForNext = false;
-    }
+    
+    
+    
 
-/**
- * Sets up the environment for each TEST METHOD
- *
- * @return void
- * @access public
- */
-	public function setUp() {
-        
-		$connections = ConnectionManager::enumConnectionObjects();
 
-		if (!empty($connections['test']['classname']) && $connections['test']['classname'] === 'mongodbSource') {
-			$config = new DATABASE_CONFIG();
-			$this->_config = $config->test;
-		} elseif (isset($connections['test_mongo'])) {
-			$this->_config = $connections['test_mongo'];
-		}
-
-		if(!isset($connections['test_mongo'])) {
-			ConnectionManager::create('test_mongo', $this->_config);
-		}
-
-		$this->Mongo = new MongodbSource($this->_config);
-
-		$this->Vehicle = ClassRegistry::init(array('class' => 'Vehicle'), true);
-		$this->VehiclePart = ClassRegistry::init(array('class' => 'VehiclePart'), true);
-        $this->Engine = ClassRegistry::init(array('class' => 'Engine'), true);
-        $this->Manufacturer = ClassRegistry::init(array('class' => 'Manufacturer'), true);
-        $this->Owner = ClassRegistry::init(array('class' => 'Owner'), true);
-
-		$this->mongodb = ConnectionManager::getDataSource($this->Vehicle->useDbConfig);
-		$this->mongodb->connect();
-        
-	}
 
 /**
  * Destroys the environment after each test method is run
@@ -462,112 +319,11 @@ class MongodbAssociationsTest extends CakeTestCase {
  * @access public
  */
 	public function tearDown() {
-		if ($this->keepAllData == false && $this->keepDataForNext == false) {
-        //    $this->dropData();
-        }
         unset($this->Vehicle);
         unset($this->VehiclePart);
 		unset($this->Mongo);
 		unset($this->mongodb);
-		ClassRegistry::flush();
+        parent::tearDown();
 	}
 
-
-/**
- * get Mongod server version
- *
- * @return numeric
- * @access public
- */
-	public function getMongodVersion() {
-		$mongo = $this->Post->getDataSource();
-		return $mongo->execute('db.version()');
-	}
-
-/**
- * Drop database
- *
- * @return void
- * @access public
- */
-	public function dropData() {
-        try {
-			$db = $this->mongodb
-				->connection
-				->selectDB($this->_config['database']);
-
-			foreach($db->listCollections() as $collection) {
-				$collection->drop();
-			}
-		} catch (MongoException $e) {
-			trigger_error($e->getMessage());
-		}
-	}
-
-
-    
-    
-    protected function assertArraySubsetMatches($result, $expected){
-        if (!is_array($result) || !is_array($expected)) {
-            $this->fail("assertArraySubsetMatches requires two arrays as arguments");
-        }
-        if (class_exists('Hash')) {
-            $result = Hash::flatten($result);
-            $expected = Hash::flatten($expected);
-        } else {
-            $result = Set::flatten($result);
-            $expected = Set::flatten($expected);
-        }
-        foreach (array_keys($expected) as $key) {
-            if (!key_exists($key, $result)) {
-                if (!empty($_GET['debug'])){
-                    debug($result); debug($expected); xdebug_print_function_stack(); ob_flush();
-                }
-                $this->fail("Key '{$key}' missing in resulting array. Enable debug output to inspect the arrays.");
-            }
-        }
-        foreach (array_keys($result) as $key) {
-            if (!key_exists($key, $expected)) {
-                unset($result[$key]);
-            }
-        }
-        $this->assertEquals($expected, $result);
-    }
-    
-    public function debug($what){
-        if (!empty($_GET['debug'])){
-            debug($what);
-            ob_flush();
-        }
-    }
-    
-    
-    
-    /**
-     * Backwards compatible function for Hash::extract
-     * 
-     * @param array $set
-     * @param string $path
-     * @param string $compatPath
-     * @return array Result of Hash::extract()
-     */
-    protected function _extract($set, $path, $compatPath = null){
-        if (class_exists('Hash')) {
-            return Hash::extract($set, $path);
-        }
-        else {
-            return Set::extract($set, ($compatPath === null) ? $path : $compatPath);
-        }
-    }
-}
-
-if (!function_exists('class_parents')) {
-  function class_parents($class=null, $autoload = null, $plist=array()) {
-    $parent = get_parent_class($class);
-    if($parent) {
-      $plist[$parent] = $parent;
-      $plist = class_parents($parent, null, $plist);
-    }
-    return $plist;
-  }
 }

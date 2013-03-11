@@ -32,6 +32,8 @@
 
 App::uses('DboSource', 'Model/Datasource');
 App::uses('SchemalessBehavior', 'Mongodb.Model/Behavior');
+$path = App::path('Lib', 'Mongodb');
+require_once($path[0] . DS . 'Error' . DS . 'exceptions.php');
 
 /**
  * MongoDB Source
@@ -186,6 +188,8 @@ class MongodbSource extends DboSource {
  *
  * @return boolean Connected
  * @access public
+ * @todo Wrap the connection arguments around a parser function.
+ * @todo Enable all connection options to be passed at config.
  */
 	public function connect() {
 		$this->connected = false;
@@ -194,7 +198,7 @@ class MongodbSource extends DboSource {
 
 			$host = $this->createConnectionName($this->config, $this->_driverVersion);
             
-			if (isset($this->config['replicaset']) && count($this->config['replicaset']) === 2) {
+            if (isset($this->config['replicaset']) && count($this->config['replicaset']) === 2) {
 				$this->connection = new Mongo($this->config['replicaset']['host'], $this->config['replicaset']['options']);
             } else if ($this->_driverVersion >= '1.3.0') {
                 $this->connection = new MongoClient($host); // presist option was removed, issues a notice in tests on 5.4
@@ -207,8 +211,8 @@ class MongodbSource extends DboSource {
 			if (isset($this->config['slaveok'])) {
 				$this->connection->setSlaveOkay($this->config['slaveok']);
 			}
-
-			if ($this->_db = $this->connection->selectDB($this->config['database'])) {
+            $this->_db = $this->connection->selectDB($this->config['database']);
+			if ($this->_db) {
 				if (!empty($this->config['login']) && $this->_driverVersion < '1.2.0') {
 					$return = $this->_db->authenticate($this->config['login'], $this->config['password']);
 					if (!$return || !$return['ok']) {
@@ -325,13 +329,28 @@ class MongodbSource extends DboSource {
  * @return mixed MongoDB Object
  * @access public
  */
-	public function getMongoDb() {
-		if ($this->connected === false) {
-			return false;
-		}
-		return $this->_db;
+	public function getMongoDb($autoconnect = false) {
+        if ($this->connected === null && $autoconnect){
+            $this->connect();
+        }
+        return $this->_db;
 	}
-
+    
+/**
+ * Get the underlying connection object. 
+ *
+ * @param boolean $autoconnect Try establishing a connection if possible.
+ * @return PDO
+ */
+    public function getConnection($autoconnect = false) {
+        if ($this->connected === false) {
+            return false;
+        }
+        elseif ($this->connected === null && $autoconnect){
+            $this->connect();
+        }
+        return $this->connection;
+    }
 /**
  * get MongoDB Collection Object
  *
@@ -402,7 +421,7 @@ class MongodbSource extends DboSource {
  * @return array Collections
  * @access public
  */
-	public function listSources($data = null) {
+    public function listSources($data = null) {
 		if (!$this->isConnected()) {
 			return false;
 		}
@@ -946,8 +965,8 @@ class MongodbSource extends DboSource {
  *  array(
  *  	Alias._id => array('$in' => array(1, 2, 3, ...))
  *  )
- *
- * @TODO bench remove() v drop. if it's faster to drop - just drop the collection taking into
+ * @todo Move all $in => array() transformations to MongodbSource::conditions() method
+ * @todo bench remove() v drop. if it's faster to drop - just drop the collection taking into
  *  	account existing indexes (recreate just the indexes)
  * @param Model $Model Model Instance
  * @param array $conditions
@@ -1036,9 +1055,9 @@ class MongodbSource extends DboSource {
 		$this->_stripAlias($fields, $model->alias, false, 'value');
 		$this->_stripAlias($order, $model->alias, false, 'both');
 
-		if(!empty($conditions['id']) && empty($conditions['_id'])) {
-			$conditions['_id'] = $conditions['id'];
-			unset($conditions['id']);
+		if(!empty($conditions[$model->primaryKey]) && empty($conditions['_id'])) {
+			$conditions['_id'] = $conditions[$model->primaryKey];
+			unset($conditions[$model->primaryKey]);
 		}
 
 		if (!empty($conditions['_id'])) {
@@ -1083,14 +1102,21 @@ class MongodbSource extends DboSource {
                 return $this->_queryCount($model, $conditions);
 				
 			}
-
+            if (empty($model->table)) {
+                return null;
+                throw new MongodbException(sprintf("Model::\$table cannot be empty (%s)", get_class($model)));
+            }
+            try {
 			$resultSet = $this->_db
 				->selectCollection($model->table)
 				->find($conditions, $fields)
 				->sort($order)
 				->limit($limit)
 				->skip($offset);
-            
+            } catch (MongoException $e) {
+                $this->error = $e->getMessage();
+                trigger_error($this->error);
+            }
             
 			if ($this->fullDebug) {
 				$count = $resultSet->count(true);
@@ -1145,7 +1171,7 @@ class MongodbSource extends DboSource {
                 }
 				$_resultSet[][$model->alias] = $resultRecord;
 			}
-            
+            unset($resultSet); //clear the Cursor from memory
 			$resultSet = $_resultSet;
 		}
 
@@ -1190,7 +1216,7 @@ class MongodbSource extends DboSource {
 						$keyName = $assocData['foreignKey'];
 					}
 					foreach($resultSet as $modelData) {
-						if(!empty($modelData[$model->alias])) {
+						if(!empty($modelData[$model->alias]) && !empty($modelData[$model->alias][$keyName])) {
 							$idList[] = $modelData[$model->alias][$keyName];
 						}
 					}
@@ -1681,10 +1707,18 @@ class MongodbSource extends DboSource {
             $idList = array();
             $keyName = ($type === 'belongsTo') ? $assocData['foreignKey'] : $model->primaryKey;
             foreach($resultSet as $modelData) {
-                if(!empty($modelData[$model->alias])) {
+                if(!empty($modelData[$model->alias]) && isset($modelData[$model->alias][$keyName])) {
                     $idList[] = $modelData[$model->alias][$keyName];
                 }
             }
+            
+            if (count($idList) == 0) {
+                /**
+                 * @todo Check if other conditions might still invoke a query for associations
+                 */
+                return false;
+            }
+            
         switch($type):
             case 'hasMany':
                 $_conditions = array($assocData['foreignKey'] => array('$in' => $idList));
@@ -1838,7 +1872,12 @@ class MongodbSource extends DboSource {
                 } else {
                     $associationIds = Set::extract($linkResults, "{n}.$joinAlias.{$assocData['associationForeignKey']}");
                 }
-                
+                if (empty($associationIds)) {
+                    /**
+                     * @todo Should an Exception or warning be thrown if no associations are found?
+                     */
+                    return false;
+                }
                 $_conditions = array($linkModel->primaryKey => array('$in' => $associationIds));
                 if(is_array($assocData['conditions'])) {
                     $_conditions = array_merge($_conditions, $assocData['conditions']);
@@ -2017,11 +2056,11 @@ $merge	array[2]
      * @return MongoDate
      */
     public static function dateFormatter($date = null) {
-	if ($date) {
-		return new MongoDate($date);
-	}
-	return new MongoDate();
-}
+        if ($date) {
+            return new MongoDate($date);
+        }
+        return new MongoDate();
+    }
     
 }
 
