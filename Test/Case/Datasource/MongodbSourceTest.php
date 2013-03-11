@@ -1770,6 +1770,58 @@ class MongodbSourceTest extends CakeTestCase {
 		$this->assertTrue(is_array($return));
 	}
     
+    
+    
+    
+    public function testUniqueId(){
+        $data = array(
+            'id' => 'uniqueID',
+            'title' => 'An article with unique string ID'
+        );
+        $this->assertTrue((boolean)$this->MongoArticle->save($data));
+        $result = $this->MongoArticle->read(null, 'uniqueID');
+        $this->assertNotEmpty($result);
+        $this->assertEqual($result['MongoArticle']['id'], 'uniqueID');
+    }
+    
+    /**
+     * Test for issue #67 on github
+     * @link https://github.com/ichikaway/cakephp-mongodb/issues/67
+     */
+    public function testUnique24ID(){
+        $id = 'abcde12345abcde12345abcd';
+        $data = array(
+            'id' => $id, //24-length unique id
+            'title' => 'An article with 24-characters long unique string ID'
+        );
+        $this->assertTrue((boolean) $this->MongoArticle->save($data));
+        $result = $this->MongoArticle->find('first');
+        $this->assertNotEmpty($result);
+        $this->assertEqual($result['MongoArticle']['id'], $id);
+    }
+    
+    /**
+     * Test for issue #67 on github
+     * @link https://github.com/ichikaway/cakephp-mongodb/issues/67
+     */
+    public function testUnique30ID(){
+        $id = 'abcde12345abcde12345abcde12345';
+        $data = array(
+            'id' => $id, //24-length unique id
+            'title' => 'An article with 24-characters long unique string ID',
+            'created' => new MongoDate(time()-260)
+        );
+        $this->assertTrue((boolean) $this->MongoArticle->save($data));
+        $result = $this->MongoArticle->find('first');
+        $this->assertNotEmpty($result);
+        $this->assertEqual($result['MongoArticle']['id'], $id);
+        
+        $data['title'] = 'Update: the id is 30 characters!';
+        $this->MongoArticle->create();
+        $this->assertTrue((boolean) $this->MongoArticle->save($data));
+        $this->assertEquals($this->MongoArticle->find('count'), 1);
+    }
+    
     /**
      * Backwards compatible function for Hash::extract
      * 
